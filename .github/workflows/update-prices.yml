@@ -38,6 +38,27 @@ jobs:
           DRY_RUN: ${{ github.event.inputs.dry_run == 'true' && '1' || '0' }}
         run: python scripts/update-prices.py
 
+      - name: Validate market data
+        if: github.event.inputs.dry_run != 'true'
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          market = json.loads(Path("public/data/market.json").read_text())
+          history = json.loads(Path("public/data/history.json").read_text())
+          quotes = market.get("quotes", {})
+          positive_quotes = sum(1 for q in quotes.values() if q.get("price", 0) > 0)
+          nonempty_history = sum(1 for rows in history.values() if rows)
+
+          if positive_quotes == 0:
+              raise SystemExit("No positive market quotes found; refusing to commit empty data.")
+          if nonempty_history == 0:
+              raise SystemExit("No chart history found; refusing to commit empty data.")
+
+          print(f"Validated {positive_quotes} positive quotes and {nonempty_history} history series.")
+          PY
+
       - name: Commit and push if changed
         if: github.event.inputs.dry_run != 'true'
         run: |

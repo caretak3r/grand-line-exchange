@@ -192,6 +192,10 @@ def compute_rsi(prices):
     return round(100 - (100 / (1 + rs)))
 
 
+def count_positive_quotes(quotes):
+    return sum(1 for q in quotes.values() if q.get('price', 0) > 0)
+
+
 # ─── MAIN UPDATE LOGIC ─────────────────────────────────────────────────────
 def main():
     print(f'─── Grand Line Exchange · price update · {datetime.now(timezone.utc).isoformat()} ───')
@@ -205,7 +209,7 @@ def main():
 
     today = datetime.now(timezone.utc).date().isoformat()
     new_quotes = {}
-    fetched, kept = 0, 0
+    fetched, kept, ebay_updates = 0, 0, 0
     new_txns = []
 
     for s in sets:
@@ -243,6 +247,7 @@ def main():
             ebay = fetch_ebay_sold(f'one piece {code} booster box english sealed', EBAY_APP_ID)
             if ebay:
                 price = round((price + ebay['avg_sold']) / 2)  # blend
+                ebay_updates += 1
                 print(f'    eBay blend: avg ${ebay["avg_sold"]} over {ebay["sold_count"]} sales')
 
         # Append today's price to history
@@ -294,6 +299,19 @@ def main():
             'lastUpdated': datetime.now(timezone.utc).isoformat(),
         }
 
+    existing_positive = count_positive_quotes(market.get('quotes', {}))
+    new_positive = count_positive_quotes(new_quotes)
+    live_updates = fetched + ebay_updates
+
+    if live_updates == 0:
+        if existing_positive and new_positive:
+            print('\nNo fresh live prices fetched; preserving existing data files instead of rewriting cached data.')
+            return
+        raise RuntimeError('No fresh prices fetched and no cached positive quotes exist; refusing to write empty market data.')
+
+    if new_positive == 0:
+        raise RuntimeError('No positive quotes produced; refusing to write empty market data.')
+
     # Merge new transactions with existing tape, keep last 100
     txns = (new_txns + txns)[:100]
 
@@ -305,7 +323,7 @@ def main():
         'quotes': new_quotes,
     }
 
-    print(f'\n→ {fetched} fetched, {kept} kept from cache.')
+    print(f'\n→ {fetched} fetched, {ebay_updates} eBay-enriched, {kept} kept from cache.')
 
     if DRY_RUN:
         print('DRY_RUN=1 — not writing files.')

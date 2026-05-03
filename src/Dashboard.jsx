@@ -209,7 +209,7 @@ export default function Dashboard() {
   }, [sets, sortKey, sortDir, filterTier, filterSignal, search]);
 
   const selected = sets.find(s => s.code === selectedSet) || sets[0];
-  const selectedHistory = history?.[selectedSet] || [];
+  const selectedHistory = selected ? (history?.[selected.code] || []) : [];
 
   // Add moving averages on the fly
   const chartData = useMemo(() => {
