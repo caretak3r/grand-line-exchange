@@ -29,9 +29,8 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-          package-manager-cache: false # Explicitly disable caching if you don't have a lockfile
+          cache: npm
           check-latest: true
-      - run: npm install
       - run: npm ci
       - name: Build
         run: npm run build
