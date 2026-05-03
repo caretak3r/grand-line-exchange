@@ -11,6 +11,13 @@ export const SET_METADATA = [
     notes: 'Original English set. Cases sold for $80K. Holy grail of OP TCG.',
   },
   {
+    code: 'OP-01-W2', name: 'Romance Dawn Wave 2', short: 'Romance Dawn W2',
+    released: '2022-12-02', msrp: 144, block: 1, status: 'rotated', tier: 'premium',
+    tcgProductId: '557280',
+    tcgUrl: 'https://www.tcgplayer.com/product/557280/one-piece-card-game-romance-dawn-romance-dawn-booster-box-wave-2-white',
+    notes: 'Second Romance Dawn booster box print wave with white packaging. Separate TCGPlayer product from Wave 1 blue box.',
+  },
+  {
     code: 'OP-02', name: 'Paramount War', short: 'Paramount War',
     released: '2023-03-10', msrp: 144, block: 1, status: 'rotated', tier: 'premium',
     tcgProductId: '455866',
@@ -95,6 +102,27 @@ export const SET_METADATA = [
     notes: 'Luffy/Ace/Sabo bond. 3rd Anniversary set. Super Red Manga Rare chases.',
   },
   {
+    code: 'OP-14', name: "The Azure Sea's Seven", short: "Azure Sea's Seven",
+    released: '2026-01-16', msrp: 144, block: 3, status: 'active', tier: 'value',
+    tcgProductId: '665598',
+    tcgUrl: 'https://www.tcgplayer.com/product/665598/one-piece-card-game-the-azure-seas-seven-the-azure-seas-seven-booster-box',
+    notes: 'Seven Warlords focus. Includes part of the EB04 card pool. Strong post-release sealed demand.',
+  },
+  {
+    code: 'OP-15', name: "Adventure on Kami's Island", short: "Kami's Island",
+    released: '2026-04-03', msrp: 144, block: 3, status: 'active', tier: 'mid',
+    tcgProductId: '682057',
+    tcgUrl: 'https://www.tcgplayer.com/product/682057/one-piece-card-game-adventure-on-kamis-island-adventure-on-kamis-island-booster-box',
+    notes: 'Sky Island theme. Officially labeled OP15-EB04 with the remaining EB04 card pool.',
+  },
+  {
+    code: 'OP-16', name: 'The Time of Battle', short: 'Time of Battle',
+    released: '2026-06-12', msrp: 144, block: 4, status: 'preorder', tier: 'premium',
+    tcgProductId: '689336',
+    tcgUrl: 'https://www.tcgplayer.com/product/689336/one-piece-card-game-the-time-of-battle-the-time-of-battle-booster-box',
+    notes: 'Paramount War theme with Impel Down and Marineford characters. Currently trading as presale.',
+  },
+  {
     code: 'EB-01', name: 'Extra Booster: Memorial Collection', short: 'EB01 Memorial',
     released: '2024-05-03', msrp: 168, block: 0, status: 'active', tier: 'mid',
     tcgProductId: '521161',
@@ -107,6 +135,13 @@ export const SET_METADATA = [
     tcgProductId: '594069',
     tcgUrl: 'https://www.tcgplayer.com/product/594069/one-piece-card-game-extra-booster-anime-25th-collection-extra-booster-anime-25th-collection-booster-box',
     notes: 'Anime 25th anniversary. Gear 2 Luffy Manga Rare. Wide character roster appeal.',
+  },
+  {
+    code: 'EB-03', name: 'Extra Booster: One Piece Heroines Edition', short: 'EB03 Heroines',
+    released: '2026-02-20', msrp: 168, block: 0, status: 'active', tier: 'premium',
+    tcgProductId: '666891',
+    tcgUrl: 'https://www.tcgplayer.com/product/666891/one-piece-card-game-extra-booster-one-piece-heroines-edition-extra-booster-one-piece-heroines-edition-box',
+    notes: 'Heroine-focused Extra Booster with Nami, Robin, Boa Hancock, and other key female characters.',
   },
   {
     code: 'PRB-01', name: 'Premium Booster -The Best-', short: 'PRB01 The Best',

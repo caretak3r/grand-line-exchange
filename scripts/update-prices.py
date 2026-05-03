@@ -43,7 +43,7 @@ TCGPLAYER_MPFEV = '5106'
 
 # ─── PARSE SET METADATA FROM sets.js ───────────────────────────────────────
 def load_sets():
-    """Parse the sets.js file to extract {code, tcgProductId, msrp, status}."""
+    """Parse the sets.js file to extract tracked product metadata."""
     text = SETS_JS.read_text()
     sets = []
     # Match each {...} block inside SET_METADATA
@@ -56,12 +56,14 @@ def load_sets():
         pid = find('tcgProductId')
         msrp = find('msrp')
         status = find('status')
+        released = find('released')
         if code and pid:
             sets.append({
                 'code': code,
                 'tcgProductId': pid,
                 'msrp': int(msrp) if msrp and msrp.isdigit() else 144,
                 'status': status or 'active',
+                'released': released,
             })
     return sets
 
@@ -297,22 +299,79 @@ def sale_date(sale):
     return order_date[:10] if len(order_date) >= 10 else None
 
 
-def build_history_from_sales(sales, fallback_price, today):
-    hist = []
+def history_sort_key(row):
+    date = str(row.get('date') or '')
+    try:
+        return datetime.fromisoformat(date.replace(' ', 'T').replace('Z', '+00:00')).timestamp()
+    except ValueError:
+        return 0
+
+
+def history_row_key(row):
+    source = row.get('source', 'legacy')
+    date = str(row.get('date') or '')
+    if source in ('release date', 'tcgplayer current market'):
+        return (source, date[:10])
+    return (source, date, row.get('price'), row.get('volume'))
+
+
+def merge_history_points(*groups):
+    merged = {}
+    for group in groups:
+        for row in group or []:
+            if not row.get('date'):
+                continue
+            merged[history_row_key(row)] = row
+    return sorted(merged.values(), key=history_sort_key)
+
+
+def release_anchor(release_date):
+    return {
+        'date': release_date,
+        'price': None,
+        'volume': 0,
+        'source': 'release date',
+        'confidence': 'reference',
+    } if release_date else None
+
+
+def current_market_point(price, today):
+    if price <= 0:
+        return None
+    return {
+        'date': today,
+        'price': price,
+        'volume': 1,
+        'source': 'tcgplayer current market',
+        'confidence': 'verified',
+    }
+
+
+def sales_history_points(sales):
+    points = []
     for sale in sales:
         order_date = sale.get('orderDate') or ''
         label = order_date[:16].replace('T', ' ') if len(order_date) >= 16 else sale_date(sale)
         price = sale_total(sale)
         if not label or price <= 0:
             continue
-        hist.append({'date': label, 'price': round(price, 2), 'volume': sale_quantity(sale)})
+        points.append({
+            'date': label,
+            'price': round(price, 2),
+            'volume': sale_quantity(sale),
+            'source': 'tcgplayer latest sale',
+            'confidence': 'verified',
+        })
+    return points
 
-    hist.sort(key=lambda row: row['date'])
-    now_label = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')
 
-    if fallback_price > 0 and (not hist or hist[-1]['date'] != now_label):
-        hist.append({'date': now_label, 'price': fallback_price, 'volume': 1})
-    return hist[-365:]
+def build_verified_history(existing, release_date, sales, current_price, today, reset=False):
+    additions = [p for p in [
+        release_anchor(release_date),
+        current_market_point(current_price, today),
+    ] if p]
+    additions.extend(sales_history_points(sales))
+    return merge_history_points([] if reset else existing, additions)
 
 
 def count_sales_since(sales, days):
@@ -342,7 +401,7 @@ def main():
         txns = []
     print(f'Loaded {len(sets)} tracked sets.')
 
-    today = datetime.now(timezone.utc).date().isoformat()
+    today = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')
     new_quotes = {}
     fetched, kept, ebay_updates = 0, 0, 0
     new_txns = []
@@ -357,7 +416,8 @@ def main():
         # polite: small delay between requests
         time.sleep(0.25 + random.random() * 0.25)
 
-        if live and live.get('marketPrice'):
+        has_live_price = bool(live and live.get('marketPrice'))
+        if has_live_price:
             price = round(live['marketPrice'])
             listings = listings_snapshot.get('totalResults') or live.get('listings') or prev_quote.get('listings', 0)
             fetched += 1
@@ -400,20 +460,18 @@ def main():
                 ebay_updates += 1
                 print(f'    eBay blend: avg ${ebay["avg_sold"]} over {ebay["sold_count"]} sales')
 
-        if INITIAL_SCRAPE:
-            hist = build_history_from_sales(latest_sales, price, today)
-        else:
-            hist = history.get(code, [])
-            if hist and hist[-1].get('date') == today:
-                hist[-1]['price'] = price
-            elif price > 0:
-                hist.append({'date': today, 'price': price, 'volume': prev_quote.get('volume30d', 0) // 30 or 1})
-            # Keep last 365 days
-            hist = hist[-365:]
+        hist = build_verified_history(
+            history.get(code, []),
+            s.get('released'),
+            latest_sales,
+            price if has_live_price else 0,
+            today,
+            reset=INITIAL_SCRAPE,
+        )
         history[code] = hist
 
         # Compute window metrics
-        prices = [h['price'] for h in hist if h.get('price', 0) > 0]
+        prices = [money(h.get('price')) for h in hist if money(h.get('price')) > 0]
         if not prices:
             continue
         high52w = max(prices[-365:]) if len(prices) >= 1 else price

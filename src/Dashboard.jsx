@@ -23,6 +23,14 @@ const t = {
 const fmt$ = (n) => !n ? '—' : `$${Math.round(n).toLocaleString('en-US')}`;
 const fmtPct = (n) => `${n > 0 ? '+' : ''}${n.toFixed(2)}%`;
 const fmtNum = (n) => n.toLocaleString('en-US');
+const parseChartTime = (value) => {
+  const ts = new Date(String(value || '').replace(' ', 'T')).getTime();
+  return Number.isFinite(ts) ? ts : null;
+};
+const fmtChartDate = (ts) => {
+  const d = new Date(ts);
+  return Number.isFinite(d.getTime()) ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+};
 const timeAgo = (iso) => {
   const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
   if (mins < 1) return 'now';
@@ -62,7 +70,8 @@ function useMarketData() {
 
 function Sparkline({ data, color, h = 26, w = 90 }) {
   if (!data || data.length === 0) return <div style={{ width: w, height: h, color: t.textDim, fontSize: 10, textAlign: 'center' }}>—</div>;
-  const prices = data.map(d => d.price);
+  const prices = data.map(d => d.price).filter(p => p > 0);
+  if (prices.length < 2) return <div style={{ width: w, height: h, color: t.textDim, fontSize: 10, textAlign: 'center' }}>—</div>;
   const min = Math.min(...prices), max = Math.max(...prices), range = max - min || 1;
   const points = prices.map((p, i) => `${(i / (prices.length - 1) * w).toFixed(1)},${(h - (p - min) / range * h).toFixed(1)}`).join(' ');
   return <svg width={w} height={h} style={{ display: 'block' }}><polyline points={points} fill="none" stroke={color} strokeWidth="1.5" /></svg>;
@@ -114,15 +123,21 @@ function PriceVolumeTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
   const rows = payload.filter(p => ['price', 'ma7', 'ma30', 'volume'].includes(p.dataKey));
   const labels = { price: 'Price', ma7: '7d MA', ma30: '30d MA', volume: 'Volume' };
+  const row = payload[0]?.payload || {};
   return (
     <div style={{ background: t.bgTertiary, border: `1px solid ${t.borderBright}`, padding: '8px 10px', fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }}>
-      <div style={{ color: t.accent, marginBottom: 6 }}>{label}</div>
+      <div style={{ color: t.accent, marginBottom: 6 }}>{fmtChartDate(label)}</div>
       {rows.map(r => (
         <div key={r.dataKey} style={{ display: 'flex', justifyContent: 'space-between', gap: 18, color: t.text }}>
           <span style={{ color: r.color || t.textDim }}>{labels[r.dataKey]}</span>
           <span>{r.dataKey === 'volume' ? `${fmtNum(r.value)} units` : fmt$(r.value)}</span>
         </div>
       ))}
+      {row.source && (
+        <div style={{ marginTop: 6, paddingTop: 6, borderTop: `1px solid ${t.border}`, color: t.textDim }}>
+          Source: <span style={{ color: t.text }}>{row.source}</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -231,16 +246,27 @@ export default function Dashboard() {
   // Add moving averages on the fly
   const chartData = useMemo(() => {
     if (!selectedHistory.length) return [];
-    return selectedHistory.map((row, i) => {
-      const w7 = selectedHistory.slice(Math.max(0, i - 6), i + 1);
-      const w30 = selectedHistory.slice(Math.max(0, i - 29), i + 1);
-      return {
-        ...row,
-        ma7: Math.round(w7.reduce((s, p) => s + p.price, 0) / w7.length * 100) / 100,
-        ma30: Math.round(w30.reduce((s, p) => s + p.price, 0) / w30.length * 100) / 100,
-      };
-    });
+    return selectedHistory
+      .map(row => ({ ...row, ts: parseChartTime(row.date) }))
+      .filter(row => row.ts)
+      .sort((a, b) => a.ts - b.ts)
+      .map((row, i, rows) => {
+        const priced = rows.slice(0, i + 1).filter(p => p.price > 0);
+        const w7 = priced.slice(-7);
+        const w30 = priced.slice(-30);
+        return {
+          ...row,
+          ma7: w7.length ? Math.round(w7.reduce((s, p) => s + p.price, 0) / w7.length * 100) / 100 : null,
+          ma30: w30.length ? Math.round(w30.reduce((s, p) => s + p.price, 0) / w30.length * 100) / 100 : null,
+        };
+      });
   }, [selectedHistory]);
+  const releaseTs = selected ? parseChartTime(selected.released) : null;
+  const dataStartTs = chartData[0]?.ts || releaseTs;
+  const dataEndTs = chartData[chartData.length - 1]?.ts || releaseTs;
+  const marketTs = market?.updatedAt ? parseChartTime(market.updatedAt) : Date.now();
+  const chartStart = Math.min(...[releaseTs, dataStartTs].filter(Boolean));
+  const chartEnd = Math.max(...[releaseTs, dataEndTs, marketTs].filter(Boolean));
 
   const active = sets.filter(s => s.price > 0);
   const totalCap = active.reduce((sum, s) => sum + s.price * s.volume30d, 0);
@@ -253,16 +279,26 @@ export default function Dashboard() {
   const topLosers = [...active].sort((a, b) => a.change30d - b.change30d).slice(0, 5);
 
   const indexData = useMemo(() => {
-    if (!history || !selectedHistory.length) return [];
-    return selectedHistory.map((_, i) => {
-      let sum = 0, n = 0;
-      for (const code of Object.keys(history)) {
-        const h = history[code];
-        if (h && h[i] && h[i].price > 0) { sum += h[i].price; n++; }
+    if (!history) return [];
+    const byDate = {};
+    for (const h of Object.values(history)) {
+      for (const row of h || []) {
+        if (!row.price || row.price <= 0) continue;
+        const date = String(row.date || '').slice(0, 10);
+        if (!date) continue;
+        byDate[date] = byDate[date] || [];
+        byDate[date].push(row.price);
       }
-      return { date: selectedHistory[i].date, index: n ? Math.round(sum / n * 100) / 100 : 0 };
-    });
-  }, [history, selectedHistory]);
+    }
+    return Object.entries(byDate)
+      .map(([date, prices]) => ({
+        date,
+        ts: parseChartTime(date),
+        index: Math.round(prices.reduce((sum, p) => sum + p, 0) / prices.length * 100) / 100,
+      }))
+      .filter(row => row.ts)
+      .sort((a, b) => a.ts - b.ts);
+  }, [history]);
 
   // ─── LOADING / ERROR STATES ────────────────────────────────────────────
   if (loading) return <LoadingScreen />;
@@ -370,6 +406,11 @@ export default function Dashboard() {
                   <div style={{ fontSize: 11, color: t.textDim, marginTop: 4, fontFamily: 'JetBrains Mono, monospace' }}>
                     Released {selected.released} · MSRP {fmt$(selected.msrp)} · Block {selected.block || 'EXTRA'}
                   </div>
+                  <div style={{ fontSize: 10, color: t.textDim, marginTop: 4, fontFamily: 'JetBrains Mono, monospace' }}>
+                    {selected.status === 'preorder'
+                      ? 'Verified TCGPlayer presale points through release date; gaps mean no verified historical point.'
+                      : 'Verified TCGPlayer points from release to current; gaps mean no verified historical point.'}
+                  </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 32, fontWeight: 700, color: t.textBright, letterSpacing: -0.5 }}>{fmt$(selected.price)}</div>
@@ -390,7 +431,7 @@ export default function Dashboard() {
                       </linearGradient>
                     </defs>
                     <CartesianGrid stroke={t.grid} strokeDasharray="2 4" vertical={false} />
-                    <XAxis dataKey="date" tick={{ fill: t.textDim, fontSize: 10, fontFamily: 'JetBrains Mono, monospace' }} stroke={t.border} interval={Math.max(1, Math.floor(chartData.length / 6))} />
+                    <XAxis dataKey="ts" type="number" scale="time" domain={[chartStart || 'dataMin', chartEnd || 'dataMax']} tick={{ fill: t.textDim, fontSize: 10, fontFamily: 'JetBrains Mono, monospace' }} stroke={t.border} tickFormatter={fmtChartDate} />
                     <YAxis yAxisId="price" tick={{ fill: t.textDim, fontSize: 10, fontFamily: 'JetBrains Mono, monospace' }} stroke={t.border} domain={['dataMin - 20', 'dataMax + 20']} tickFormatter={(v) => `$${v}`} />
                     <YAxis yAxisId="volume" orientation="right" hide domain={[0, dataMax => Math.max(1, dataMax * 3.5)]} />
                     <Tooltip content={<PriceVolumeTooltip />} cursor={{ fill: `${t.accent}08` }} />
@@ -603,9 +644,9 @@ export default function Dashboard() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid stroke={t.grid} strokeDasharray="2 4" vertical={false} />
-                  <XAxis dataKey="date" tick={{ fill: t.textDim, fontSize: 10 }} stroke={t.border} interval={Math.max(1, Math.floor(indexData.length / 5))} />
+                  <XAxis dataKey="ts" type="number" scale="time" tick={{ fill: t.textDim, fontSize: 10 }} stroke={t.border} tickFormatter={fmtChartDate} />
                   <YAxis tick={{ fill: t.textDim, fontSize: 10 }} stroke={t.border} tickFormatter={(v) => `$${v}`} />
-                  <Tooltip contentStyle={{ background: t.bgTertiary, border: `1px solid ${t.borderBright}`, fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }} />
+                  <Tooltip contentStyle={{ background: t.bgTertiary, border: `1px solid ${t.borderBright}`, fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }} labelFormatter={fmtChartDate} formatter={(v) => [fmt$(v), 'Index']} />
                   <Area type="monotone" dataKey="index" stroke={t.buy} fill="url(#idxGrad)" strokeWidth={2} dot={false} />
                 </AreaChart>
               </ResponsiveContainer>
