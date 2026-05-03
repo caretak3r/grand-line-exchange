@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  AreaChart, Area, BarChart, Bar, LineChart, Line,
+  AreaChart, Area, ComposedChart, Bar, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
 import {
@@ -106,6 +106,23 @@ function DataRow({ label, value, color }) {
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '4px 0' }}>
       <span style={{ fontSize: 10, color: t.textDim, fontFamily: 'JetBrains Mono, monospace', letterSpacing: 0.5 }}>{label}</span>
       <span style={{ fontSize: 12, color: color || t.textBright, fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>{value}</span>
+    </div>
+  );
+}
+
+function PriceVolumeTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  const rows = payload.filter(p => ['price', 'ma7', 'ma30', 'volume'].includes(p.dataKey));
+  const labels = { price: 'Price', ma7: '7d MA', ma30: '30d MA', volume: 'Volume' };
+  return (
+    <div style={{ background: t.bgTertiary, border: `1px solid ${t.borderBright}`, padding: '8px 10px', fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }}>
+      <div style={{ color: t.accent, marginBottom: 6 }}>{label}</div>
+      {rows.map(r => (
+        <div key={r.dataKey} style={{ display: 'flex', justifyContent: 'space-between', gap: 18, color: t.text }}>
+          <span style={{ color: r.color || t.textDim }}>{labels[r.dataKey]}</span>
+          <span>{r.dataKey === 'volume' ? `${fmtNum(r.value)} units` : fmt$(r.value)}</span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -365,7 +382,7 @@ export default function Dashboard() {
 
               <div style={{ height: 300 }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData}>
+                  <ComposedChart data={chartData}>
                     <defs>
                       <linearGradient id="priceGrad" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor={t.accent} stopOpacity={0.4} />
@@ -374,31 +391,24 @@ export default function Dashboard() {
                     </defs>
                     <CartesianGrid stroke={t.grid} strokeDasharray="2 4" vertical={false} />
                     <XAxis dataKey="date" tick={{ fill: t.textDim, fontSize: 10, fontFamily: 'JetBrains Mono, monospace' }} stroke={t.border} interval={Math.max(1, Math.floor(chartData.length / 6))} />
-                    <YAxis tick={{ fill: t.textDim, fontSize: 10, fontFamily: 'JetBrains Mono, monospace' }} stroke={t.border} domain={['dataMin - 20', 'dataMax + 20']} tickFormatter={(v) => `$${v}`} />
-                    <Tooltip contentStyle={{ background: t.bgTertiary, border: `1px solid ${t.borderBright}`, fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }} labelStyle={{ color: t.accent }} formatter={(v, n) => [`$${v}`, n === 'price' ? 'Price' : n === 'ma7' ? '7d MA' : '30d MA']} />
-                    <Area type="monotone" dataKey="price" stroke={t.accent} fill="url(#priceGrad)" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="ma7" stroke={t.info} strokeWidth={1} dot={false} strokeDasharray="3 3" />
-                    <Line type="monotone" dataKey="ma30" stroke={t.sell} strokeWidth={1} dot={false} strokeDasharray="5 3" />
-                    <ReferenceLine y={selected.msrp} stroke={t.textDim} strokeDasharray="2 6" label={{ value: 'MSRP', fill: t.textDim, fontSize: 9, position: 'right' }} />
-                  </AreaChart>
+                    <YAxis yAxisId="price" tick={{ fill: t.textDim, fontSize: 10, fontFamily: 'JetBrains Mono, monospace' }} stroke={t.border} domain={['dataMin - 20', 'dataMax + 20']} tickFormatter={(v) => `$${v}`} />
+                    <YAxis yAxisId="volume" orientation="right" hide domain={[0, dataMax => Math.max(1, dataMax * 3.5)]} />
+                    <Tooltip content={<PriceVolumeTooltip />} cursor={{ fill: `${t.accent}08` }} />
+                    <Bar yAxisId="volume" dataKey="volume" name="Volume" fill={t.accentDim} fillOpacity={0.38} barSize={14} />
+                    <Area yAxisId="price" type="monotone" dataKey="price" name="Price" stroke={t.accent} fill="url(#priceGrad)" strokeWidth={2} dot={false} />
+                    <Line yAxisId="price" type="monotone" dataKey="ma7" name="7d MA" stroke={t.info} strokeWidth={1} dot={false} strokeDasharray="3 3" />
+                    <Line yAxisId="price" type="monotone" dataKey="ma30" name="30d MA" stroke={t.sell} strokeWidth={1} dot={false} strokeDasharray="5 3" />
+                    <ReferenceLine yAxisId="price" y={selected.msrp} stroke={t.textDim} strokeDasharray="2 6" label={{ value: 'MSRP', fill: t.textDim, fontSize: 9, position: 'right' }} />
+                  </ComposedChart>
                 </ResponsiveContainer>
               </div>
 
               <div style={{ display: 'flex', gap: 16, fontSize: 10, fontFamily: 'JetBrains Mono, monospace', color: t.textDim, marginTop: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                <span><span style={{ color: t.accentDim }}>▮</span> Volume</span>
                 <span><span style={{ color: t.accent }}>━</span> Price</span>
                 <span><span style={{ color: t.info }}>┄</span> 7d MA</span>
                 <span><span style={{ color: t.sell }}>┄</span> 30d MA</span>
                 <span><span style={{ color: t.textDim }}>┄</span> MSRP</span>
-              </div>
-
-              <div style={{ height: 80, marginTop: 16, borderTop: `1px solid ${t.border}`, paddingTop: 12 }}>
-                <div style={{ fontSize: 10, fontFamily: 'JetBrains Mono, monospace', color: t.textDim, letterSpacing: 1, marginBottom: 4 }}>VOLUME (UNITS/DAY)</div>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData}>
-                    <Bar dataKey="volume" fill={t.accentDim} />
-                    <Tooltip contentStyle={{ background: t.bgTertiary, border: `1px solid ${t.borderBright}`, fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }} />
-                  </BarChart>
-                </ResponsiveContainer>
               </div>
             </div>
 
