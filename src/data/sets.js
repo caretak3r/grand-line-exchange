@@ -13,8 +13,8 @@ export const SET_METADATA = [
   {
     code: 'OP-02', name: 'Paramount War', short: 'Paramount War',
     released: '2023-03-10', msrp: 144, block: 1, status: 'rotated', tier: 'premium',
-    tcgProductId: '455867',
-    tcgUrl: 'https://www.tcgplayer.com/product/455867/one-piece-card-game-paramount-war-paramount-war-booster-box',
+    tcgProductId: '455866',
+    tcgUrl: 'https://www.tcgplayer.com/product/455866/one-piece-card-game-paramount-war-paramount-war-booster-box',
     notes: 'Whitebeard, Ace, Marineford-era cards. Strong nostalgia anchor.',
   },
   {
@@ -93,13 +93,6 @@ export const SET_METADATA = [
     tcgProductId: '628352',
     tcgUrl: 'https://www.tcgplayer.com/product/628352/one-piece-card-game-carrying-on-his-will-carrying-on-his-will-booster-box',
     notes: 'Luffy/Ace/Sabo bond. 3rd Anniversary set. Super Red Manga Rare chases.',
-  },
-  {
-    code: 'OP-14', name: "The Azure Sea's Seven", short: "Azure Sea's Seven",
-    released: '2026-02-27', msrp: 144, block: 3, status: 'active', tier: 'value',
-    tcgProductId: '665598',
-    tcgUrl: 'https://www.tcgplayer.com/product/665598/one-piece-card-game-the-azure-seas-seven-the-azure-seas-seven-booster-box',
-    notes: 'Seven Warlords focus. Includes EB04 bonus pack. Hot momentum.',
   },
   {
     code: 'EB-01', name: 'Extra Booster: Memorial Collection', short: 'EB01 Memorial',

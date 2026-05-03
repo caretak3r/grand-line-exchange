@@ -1,542 +1,632 @@
 [
   {
-    "id": "restored-0",
-    "set": "OP-12",
-    "type": "LISTED",
-    "price": 182,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-03T12:21:43.686606+00:00",
-    "qty": 2
-  },
-  {
-    "id": "restored-1",
-    "set": "PRB-01",
-    "type": "SOLD",
-    "price": 560,
-    "venue": "eBay",
-    "timestamp": "2026-05-03T10:38:43.686606+00:00",
-    "qty": 2
-  },
-  {
-    "id": "restored-2",
-    "set": "OP-03",
-    "type": "SOLD",
-    "price": 759,
-    "venue": "eBay",
-    "timestamp": "2026-05-03T09:14:43.686606+00:00",
-    "qty": 1
-  },
-  {
-    "id": "restored-3",
-    "set": "OP-08",
-    "type": "OFFER",
-    "price": 250,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-03T06:43:43.686606+00:00",
-    "qty": 2
-  },
-  {
-    "id": "restored-4",
-    "set": "OP-14",
-    "type": "OFFER",
-    "price": 218,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-03T05:15:43.686606+00:00",
-    "qty": 1
-  },
-  {
-    "id": "restored-5",
+    "id": "PRB-02-listed-1777828292",
     "set": "PRB-02",
-    "type": "SOLD",
-    "price": 393,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-03T04:19:43.686606+00:00",
-    "qty": 3
-  },
-  {
-    "id": "restored-6",
-    "set": "OP-11",
     "type": "LISTED",
-    "price": 376,
-    "venue": "Cardmarket",
-    "timestamp": "2026-05-03T03:15:43.686606+00:00",
-    "qty": 1
-  },
-  {
-    "id": "restored-7",
-    "set": "EB-01",
-    "type": "OFFER",
-    "price": 441,
-    "venue": "eBay",
-    "timestamp": "2026-05-03T03:12:43.686606+00:00",
-    "qty": 1
-  },
-  {
-    "id": "restored-8",
-    "set": "OP-06",
-    "type": "SOLD",
-    "price": 371,
-    "venue": "Cardmarket",
-    "timestamp": "2026-05-03T03:09:43.686606+00:00",
-    "qty": 1
-  },
-  {
-    "id": "restored-9",
-    "set": "OP-07",
-    "type": "OFFER",
-    "price": 294,
+    "price": 334,
     "venue": "TCGPlayer",
-    "timestamp": "2026-05-03T02:21:43.686606+00:00",
+    "timestamp": "2026-05-03T17:11:32.328741+00:00",
     "qty": 1
   },
   {
-    "id": "restored-10",
-    "set": "EB-02",
-    "type": "SOLD",
-    "price": 293,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-03T01:42:43.686606+00:00",
-    "qty": 3
-  },
-  {
-    "id": "restored-11",
-    "set": "OP-01",
-    "type": "OFFER",
-    "price": 1778,
-    "venue": "Cardmarket",
-    "timestamp": "2026-05-03T01:27:43.686606+00:00",
-    "qty": 2
-  },
-  {
-    "id": "restored-12",
-    "set": "OP-03",
-    "type": "SOLD",
-    "price": 750,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-03T00:46:43.686606+00:00",
-    "qty": 1
-  },
-  {
-    "id": "restored-13",
-    "set": "OP-03",
-    "type": "LISTED",
-    "price": 738,
-    "venue": "Cardmarket",
-    "timestamp": "2026-05-02T23:59:43.686606+00:00",
-    "qty": 3
-  },
-  {
-    "id": "restored-14",
-    "set": "OP-03",
-    "type": "LISTED",
-    "price": 754,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-02T23:24:43.686606+00:00",
-    "qty": 2
-  },
-  {
-    "id": "restored-15",
-    "set": "PRB-02",
-    "type": "SOLD",
-    "price": 372,
-    "venue": "Cardmarket",
-    "timestamp": "2026-05-02T22:59:43.686606+00:00",
-    "qty": 1
-  },
-  {
-    "id": "restored-16",
-    "set": "OP-07",
-    "type": "LISTED",
-    "price": 292,
-    "venue": "Cardmarket",
-    "timestamp": "2026-05-02T22:51:43.686606+00:00",
-    "qty": 1
-  },
-  {
-    "id": "restored-17",
-    "set": "OP-03",
-    "type": "SOLD",
-    "price": 759,
-    "venue": "Cardmarket",
-    "timestamp": "2026-05-02T22:02:43.686606+00:00",
-    "qty": 2
-  },
-  {
-    "id": "restored-18",
-    "set": "OP-01",
-    "type": "OFFER",
-    "price": 5482,
-    "venue": "eBay",
-    "timestamp": "2026-05-02T21:22:43.686606+00:00",
-    "qty": 3
-  },
-  {
-    "id": "restored-19",
-    "set": "OP-08",
-    "type": "OFFER",
-    "price": 240,
-    "venue": "Cardmarket",
-    "timestamp": "2026-05-02T17:35:43.686606+00:00",
-    "qty": 3
-  },
-  {
-    "id": "restored-20",
-    "set": "OP-13",
-    "type": "OFFER",
-    "price": 157,
-    "venue": "Cardmarket",
-    "timestamp": "2026-05-02T15:03:43.686606+00:00",
-    "qty": 3
-  },
-  {
-    "id": "restored-21",
-    "set": "OP-08",
-    "type": "OFFER",
-    "price": 250,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-02T14:35:43.686606+00:00",
-    "qty": 3
-  },
-  {
-    "id": "restored-22",
-    "set": "EB-01",
-    "type": "OFFER",
-    "price": 417,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-02T14:06:43.686606+00:00",
-    "qty": 1
-  },
-  {
-    "id": "restored-23",
-    "set": "EB-02",
-    "type": "SOLD",
-    "price": 277,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-02T09:29:43.686606+00:00",
-    "qty": 3
-  },
-  {
-    "id": "restored-24",
+    "id": "PRB-01-listed-1777828291",
     "set": "PRB-01",
     "type": "LISTED",
-    "price": 549,
-    "venue": "Cardmarket",
-    "timestamp": "2026-05-02T09:11:43.686606+00:00",
-    "qty": 2
-  },
-  {
-    "id": "restored-25",
-    "set": "PRB-01",
-    "type": "SOLD",
-    "price": 548,
-    "venue": "eBay",
-    "timestamp": "2026-05-02T06:39:43.686606+00:00",
-    "qty": 1
-  },
-  {
-    "id": "restored-26",
-    "set": "OP-01",
-    "type": "SOLD",
-    "price": 1728,
-    "venue": "Cardmarket",
-    "timestamp": "2026-05-02T05:23:43.686606+00:00",
-    "qty": 1
-  },
-  {
-    "id": "restored-27",
-    "set": "OP-01",
-    "type": "SOLD",
-    "price": 5715,
+    "price": 867,
     "venue": "TCGPlayer",
-    "timestamp": "2026-05-02T05:13:43.686606+00:00",
-    "qty": 3
+    "timestamp": "2026-05-03T17:11:31.602732+00:00",
+    "qty": 1
   },
   {
-    "id": "restored-28",
-    "set": "OP-06",
-    "type": "SOLD",
-    "price": 385,
-    "venue": "eBay",
-    "timestamp": "2026-05-02T04:53:43.686606+00:00",
-    "qty": 3
-  },
-  {
-    "id": "restored-29",
+    "id": "EB-02-listed-1777828290",
     "set": "EB-02",
     "type": "LISTED",
-    "price": 280,
-    "venue": "eBay",
-    "timestamp": "2026-05-02T04:09:43.686606+00:00",
-    "qty": 3
-  },
-  {
-    "id": "restored-30",
-    "set": "OP-01",
-    "type": "SOLD",
-    "price": 1844,
+    "price": 440,
     "venue": "TCGPlayer",
-    "timestamp": "2026-05-02T03:45:43.686606+00:00",
-    "qty": 3
+    "timestamp": "2026-05-03T17:11:30.859887+00:00",
+    "qty": 1
   },
   {
-    "id": "restored-31",
-    "set": "OP-05",
-    "type": "LISTED",
-    "price": 968,
-    "venue": "Cardmarket",
-    "timestamp": "2026-05-02T03:13:43.686606+00:00",
-    "qty": 3
-  },
-  {
-    "id": "restored-32",
+    "id": "EB-01-listed-1777828290",
     "set": "EB-01",
-    "type": "SOLD",
-    "price": 439,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-02T02:21:43.686606+00:00",
-    "qty": 3
-  },
-  {
-    "id": "restored-33",
-    "set": "OP-14",
-    "type": "SOLD",
-    "price": 223,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-02T02:19:43.686606+00:00",
-    "qty": 3
-  },
-  {
-    "id": "restored-34",
-    "set": "PRB-01",
     "type": "LISTED",
-    "price": 552,
+    "price": 814,
     "venue": "TCGPlayer",
-    "timestamp": "2026-05-02T00:13:43.686606+00:00",
-    "qty": 2
+    "timestamp": "2026-05-03T17:11:30.070684+00:00",
+    "qty": 1
   },
   {
-    "id": "restored-35",
+    "id": "OP-13-listed-1777828289",
     "set": "OP-13",
     "type": "LISTED",
-    "price": 152,
-    "venue": "eBay",
-    "timestamp": "2026-05-01T22:52:43.686606+00:00",
-    "qty": 3
-  },
-  {
-    "id": "restored-36",
-    "set": "OP-02",
-    "type": "OFFER",
-    "price": 1011,
-    "venue": "Cardmarket",
-    "timestamp": "2026-05-01T20:37:43.686606+00:00",
-    "qty": 3
-  },
-  {
-    "id": "restored-37",
-    "set": "PRB-01",
-    "type": "SOLD",
-    "price": 559,
-    "venue": "eBay",
-    "timestamp": "2026-05-01T19:46:43.686606+00:00",
-    "qty": 2
-  },
-  {
-    "id": "restored-38",
-    "set": "OP-14",
-    "type": "OFFER",
-    "price": 217,
+    "price": 591,
     "venue": "TCGPlayer",
-    "timestamp": "2026-05-01T19:20:43.686606+00:00",
-    "qty": 3
-  },
-  {
-    "id": "restored-39",
-    "set": "OP-06",
-    "type": "LISTED",
-    "price": 377,
-    "venue": "eBay",
-    "timestamp": "2026-05-01T17:45:43.686606+00:00",
-    "qty": 3
-  },
-  {
-    "id": "restored-40",
-    "set": "OP-12",
-    "type": "SOLD",
-    "price": 179,
-    "venue": "eBay",
-    "timestamp": "2026-05-01T14:19:43.686606+00:00",
+    "timestamp": "2026-05-03T17:11:29.281626+00:00",
     "qty": 1
   },
   {
-    "id": "restored-41",
-    "set": "OP-06",
-    "type": "OFFER",
-    "price": 376,
-    "venue": "Cardmarket",
-    "timestamp": "2026-05-01T13:50:43.686606+00:00",
-    "qty": 3
+    "id": "OP-12-listed-1777828288",
+    "set": "OP-12",
+    "type": "LISTED",
+    "price": 239,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-03T17:11:28.552848+00:00",
+    "qty": 1
   },
   {
-    "id": "restored-42",
+    "id": "OP-11-listed-1777828287",
     "set": "OP-11",
     "type": "LISTED",
-    "price": 357,
+    "price": 405,
     "venue": "TCGPlayer",
-    "timestamp": "2026-05-01T12:08:43.686606+00:00",
-    "qty": 3
-  },
-  {
-    "id": "restored-43",
-    "set": "EB-01",
-    "type": "OFFER",
-    "price": 438,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-01T06:37:43.686606+00:00",
+    "timestamp": "2026-05-03T17:11:27.835812+00:00",
     "qty": 1
   },
   {
-    "id": "restored-44",
+    "id": "OP-10-listed-1777828286",
     "set": "OP-10",
-    "type": "SOLD",
-    "price": 211,
-    "venue": "Cardmarket",
-    "timestamp": "2026-05-01T05:52:43.686606+00:00",
+    "type": "LISTED",
+    "price": 220,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-03T17:11:26.971151+00:00",
     "qty": 1
   },
   {
-    "id": "restored-45",
+    "id": "OP-09-listed-1777828286",
+    "set": "OP-09",
+    "type": "LISTED",
+    "price": 579,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-03T17:11:26.157703+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-08-listed-1777828285",
+    "set": "OP-08",
+    "type": "LISTED",
+    "price": 222,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-03T17:11:25.347057+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-07-listed-1777828284",
     "set": "OP-07",
-    "type": "OFFER",
-    "price": 286,
-    "venue": "eBay",
-    "timestamp": "2026-05-01T05:31:43.686606+00:00",
-    "qty": 3
-  },
-  {
-    "id": "restored-46",
-    "set": "PRB-01",
-    "type": "OFFER",
-    "price": 528,
-    "venue": "Cardmarket",
-    "timestamp": "2026-05-01T03:22:43.686606+00:00",
-    "qty": 1
-  },
-  {
-    "id": "restored-47",
-    "set": "OP-05",
     "type": "LISTED",
-    "price": 1003,
+    "price": 300,
     "venue": "TCGPlayer",
-    "timestamp": "2026-05-01T03:00:43.686606+00:00",
-    "qty": 3
-  },
-  {
-    "id": "restored-48",
-    "set": "OP-05",
-    "type": "SOLD",
-    "price": 982,
-    "venue": "eBay",
-    "timestamp": "2026-05-01T02:56:43.686606+00:00",
-    "qty": 2
-  },
-  {
-    "id": "restored-49",
-    "set": "PRB-02",
-    "type": "LISTED",
-    "price": 397,
-    "venue": "Cardmarket",
-    "timestamp": "2026-05-01T02:09:43.686606+00:00",
+    "timestamp": "2026-05-03T17:11:24.631874+00:00",
     "qty": 1
   },
   {
-    "id": "restored-50",
+    "id": "OP-06-listed-1777828283",
     "set": "OP-06",
-    "type": "SOLD",
-    "price": 374,
-    "venue": "Cardmarket",
-    "timestamp": "2026-04-30T23:23:43.686606+00:00",
-    "qty": 2
-  },
-  {
-    "id": "restored-51",
-    "set": "EB-02",
-    "type": "SOLD",
-    "price": 276,
+    "type": "LISTED",
+    "price": 355,
     "venue": "TCGPlayer",
-    "timestamp": "2026-04-30T23:00:43.686606+00:00",
+    "timestamp": "2026-05-03T17:11:23.818923+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-05-listed-1777828282",
+    "set": "OP-05",
+    "type": "LISTED",
+    "price": 1000,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-03T17:11:22.961669+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-04-listed-1777828282",
+    "set": "OP-04",
+    "type": "LISTED",
+    "price": 503,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-03T17:11:22.238752+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-03-listed-1777828281",
+    "set": "OP-03",
+    "type": "LISTED",
+    "price": 507,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-03T17:11:21.557644+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-02-listed-1777828280",
+    "set": "OP-02",
+    "type": "LISTED",
+    "price": 495,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-03T17:11:20.733032+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-01-listed-1777828279",
+    "set": "OP-01",
+    "type": "LISTED",
+    "price": 5985,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-03T17:11:19.952991+00:00",
+    "qty": 1
+  },
+  {
+    "id": "PRB-02-sold-2026-05-03T14:42:26.02+00:00",
+    "set": "PRB-02",
+    "type": "SOLD",
+    "price": 344,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-03T14:42:26.02+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-08-sold-2026-05-03T14:31:18.52+00:00",
+    "set": "OP-08",
+    "type": "SOLD",
+    "price": 232,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-03T14:31:18.52+00:00",
     "qty": 2
   },
   {
-    "id": "restored-52",
+    "id": "OP-13-sold-2026-05-03T14:22:26.843+00:00",
+    "set": "OP-13",
+    "type": "SOLD",
+    "price": 593,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-03T14:22:26.843+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-09-sold-2026-05-03T13:56:33.313+00:00",
     "set": "OP-09",
     "type": "SOLD",
-    "price": 310,
+    "price": 589,
     "venue": "TCGPlayer",
-    "timestamp": "2026-04-30T22:13:43.686606+00:00",
+    "timestamp": "2026-05-03T13:56:33.313+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-11-sold-2026-05-03T13:54:39.46+00:00",
+    "set": "OP-11",
+    "type": "SOLD",
+    "price": 405,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-03T13:54:39.46+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-11-sold-2026-05-03T12:23:03.56+00:00",
+    "set": "OP-11",
+    "type": "SOLD",
+    "price": 405,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-03T12:23:03.56+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-05-sold-2026-05-03T10:23:45.97+00:00",
+    "set": "OP-05",
+    "type": "SOLD",
+    "price": 1000,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-03T10:23:45.97+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-13-sold-2026-05-03T10:23:45.96+00:00",
+    "set": "OP-13",
+    "type": "SOLD",
+    "price": 593,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-03T10:23:45.96+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-08-sold-2026-05-03T09:15:19.807+00:00",
+    "set": "OP-08",
+    "type": "SOLD",
+    "price": 230,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-03T09:15:19.807+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-07-sold-2026-05-03T09:15:19.797+00:00",
+    "set": "OP-07",
+    "type": "SOLD",
+    "price": 300,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-03T09:15:19.797+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-10-sold-2026-05-03T07:25:18.963+00:00",
+    "set": "OP-10",
+    "type": "SOLD",
+    "price": 220,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-03T07:25:18.963+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-11-sold-2026-05-03T06:55:34.363+00:00",
+    "set": "OP-11",
+    "type": "SOLD",
+    "price": 405,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-03T06:55:34.363+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-11-sold-2026-05-03T05:53:16.597+00:00",
+    "set": "OP-11",
+    "type": "SOLD",
+    "price": 400,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-03T05:53:16.597+00:00",
     "qty": 2
   },
   {
-    "id": "restored-53",
-    "set": "OP-04",
-    "type": "LISTED",
-    "price": 514,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-04-30T20:06:43.686606+00:00",
-    "qty": 1
-  },
-  {
-    "id": "restored-54",
-    "set": "EB-01",
-    "type": "LISTED",
-    "price": 415,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-04-30T18:55:43.686606+00:00",
-    "qty": 1
-  },
-  {
-    "id": "restored-55",
+    "id": "OP-13-sold-2026-05-03T04:47:36.043+00:00",
     "set": "OP-13",
-    "type": "LISTED",
-    "price": 154,
-    "venue": "eBay",
-    "timestamp": "2026-04-30T18:12:43.686606+00:00",
-    "qty": 1
+    "type": "SOLD",
+    "price": 695,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-03T04:47:36.043+00:00",
+    "qty": 2
   },
   {
-    "id": "restored-56",
-    "set": "OP-10",
-    "type": "LISTED",
-    "price": 207,
-    "venue": "Cardmarket",
-    "timestamp": "2026-04-30T17:56:43.686606+00:00",
-    "qty": 1
-  },
-  {
-    "id": "restored-57",
-    "set": "EB-01",
-    "type": "OFFER",
-    "price": 439,
-    "venue": "eBay",
-    "timestamp": "2026-04-30T15:59:43.686606+00:00",
-    "qty": 1
-  },
-  {
-    "id": "restored-58",
+    "id": "OP-05-sold-2026-05-03T03:59:23.77+00:00",
     "set": "OP-05",
-    "type": "OFFER",
-    "price": 1028,
-    "venue": "Cardmarket",
-    "timestamp": "2026-04-30T15:20:43.686606+00:00",
-    "qty": 3
+    "type": "SOLD",
+    "price": 992,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-03T03:59:23.77+00:00",
+    "qty": 1
   },
   {
-    "id": "restored-59",
+    "id": "OP-10-sold-2026-05-03T03:58:04.897+00:00",
+    "set": "OP-10",
+    "type": "SOLD",
+    "price": 220,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-03T03:58:04.897+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-06-sold-2026-05-03T03:01:16.147+00:00",
+    "set": "OP-06",
+    "type": "SOLD",
+    "price": 370,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-03T03:01:16.147+00:00",
+    "qty": 1
+  },
+  {
+    "id": "PRB-02-sold-2026-05-03T03:01:16.12+00:00",
+    "set": "PRB-02",
+    "type": "SOLD",
+    "price": 344,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-03T03:01:16.12+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-12-sold-2026-05-03T03:01:16.09+00:00",
+    "set": "OP-12",
+    "type": "SOLD",
+    "price": 240,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-03T03:01:16.09+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-05-sold-2026-05-03T01:21:01.92+00:00",
+    "set": "OP-05",
+    "type": "SOLD",
+    "price": 1025,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-03T01:21:01.92+00:00",
+    "qty": 1
+  },
+  {
+    "id": "EB-02-sold-2026-05-02T21:28:41.23+00:00",
+    "set": "EB-02",
+    "type": "SOLD",
+    "price": 470,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-02T21:28:41.23+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-09-sold-2026-05-02T21:20:29.283+00:00",
+    "set": "OP-09",
+    "type": "SOLD",
+    "price": 595,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-02T21:20:29.283+00:00",
+    "qty": 1
+  },
+  {
+    "id": "EB-02-sold-2026-05-02T21:08:45.403+00:00",
+    "set": "EB-02",
+    "type": "SOLD",
+    "price": 470,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-02T21:08:45.403+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-09-sold-2026-05-02T19:49:03.7+00:00",
+    "set": "OP-09",
+    "type": "SOLD",
+    "price": 589,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-02T19:49:03.7+00:00",
+    "qty": 1
+  },
+  {
+    "id": "PRB-02-sold-2026-05-02T18:24:30.66+00:00",
+    "set": "PRB-02",
+    "type": "SOLD",
+    "price": 344,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-02T18:24:30.66+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-12-sold-2026-05-02T16:49:02.673+00:00",
+    "set": "OP-12",
+    "type": "SOLD",
+    "price": 240,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-02T16:49:02.673+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-13-sold-2026-05-02T16:49:02.673+00:00",
+    "set": "OP-13",
+    "type": "SOLD",
+    "price": 593,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-02T16:49:02.673+00:00",
+    "qty": 1
+  },
+  {
+    "id": "EB-02-sold-2026-05-02T14:31:54.093+00:00",
+    "set": "EB-02",
+    "type": "SOLD",
+    "price": 500,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-02T14:31:54.093+00:00",
+    "qty": 2
+  },
+  {
+    "id": "OP-13-sold-2026-05-02T07:15:10.99+00:00",
+    "set": "OP-13",
+    "type": "SOLD",
+    "price": 593,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-02T07:15:10.99+00:00",
+    "qty": 1
+  },
+  {
+    "id": "PRB-01-sold-2026-05-02T00:28:07.54+00:00",
+    "set": "PRB-01",
+    "type": "SOLD",
+    "price": 830,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-02T00:28:07.54+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-12-sold-2026-05-01T21:40:53.86+00:00",
+    "set": "OP-12",
+    "type": "SOLD",
+    "price": 240,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-01T21:40:53.86+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-10-sold-2026-05-01T16:41:00.417+00:00",
+    "set": "OP-10",
+    "type": "SOLD",
+    "price": 220,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-01T16:41:00.417+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-08-sold-2026-05-01T15:41:08.237+00:00",
+    "set": "OP-08",
+    "type": "SOLD",
+    "price": 237,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-01T15:41:08.237+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-07-sold-2026-05-01T02:54:26.22+00:00",
+    "set": "OP-07",
+    "type": "SOLD",
+    "price": 300,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-01T02:54:26.22+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-07-sold-2026-04-30T19:09:01.05+00:00",
+    "set": "OP-07",
+    "type": "SOLD",
+    "price": 296,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-04-30T19:09:01.05+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-02-sold-2026-04-30T18:13:59.36+00:00",
+    "set": "OP-02",
+    "type": "SOLD",
+    "price": 468,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-04-30T18:13:59.36+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-01-sold-2026-04-29T14:31:00.38+00:00",
+    "set": "OP-01",
+    "type": "SOLD",
+    "price": 5985,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-04-29T14:31:00.38+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-04-sold-2026-04-29T10:24:36.057+00:00",
     "set": "OP-04",
     "type": "SOLD",
-    "price": 525,
+    "price": 505,
     "venue": "TCGPlayer",
-    "timestamp": "2026-04-30T15:04:43.686606+00:00",
+    "timestamp": "2026-04-29T10:24:36.057+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-02-sold-2026-04-29T07:09:28.97+00:00",
+    "set": "OP-02",
+    "type": "SOLD",
+    "price": 509,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-04-29T07:09:28.97+00:00",
+    "qty": 2
+  },
+  {
+    "id": "OP-03-sold-2026-04-28T12:47:08.26+00:00",
+    "set": "OP-03",
+    "type": "SOLD",
+    "price": 522,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-04-28T12:47:08.26+00:00",
+    "qty": 1
+  },
+  {
+    "id": "EB-01-sold-2026-04-28T01:39:39.653+00:00",
+    "set": "EB-01",
+    "type": "SOLD",
+    "price": 815,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-04-28T01:39:39.653+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-03-sold-2026-04-27T15:39:26.943+00:00",
+    "set": "OP-03",
+    "type": "SOLD",
+    "price": 522,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-04-27T15:39:26.943+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-04-sold-2026-04-26T21:44:39.393+00:00",
+    "set": "OP-04",
+    "type": "SOLD",
+    "price": 505,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-04-26T21:44:39.393+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-03-sold-2026-04-26T17:58:46.643+00:00",
+    "set": "OP-03",
+    "type": "SOLD",
+    "price": 522,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-04-26T17:58:46.643+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-02-sold-2026-04-26T12:41:04.21+00:00",
+    "set": "OP-02",
+    "type": "SOLD",
+    "price": 499,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-04-26T12:41:04.21+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-04-sold-2026-04-24T16:50:43.547+00:00",
+    "set": "OP-04",
+    "type": "SOLD",
+    "price": 484,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-04-24T16:50:43.547+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-03-sold-2026-04-24T15:52:01.54+00:00",
+    "set": "OP-03",
+    "type": "SOLD",
+    "price": 487,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-04-24T15:52:01.54+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-03-sold-2026-04-24T15:52:01.53+00:00",
+    "set": "OP-03",
+    "type": "SOLD",
+    "price": 475,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-04-24T15:52:01.53+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-02-sold-2026-04-21T15:49:29.963+00:00",
+    "set": "OP-02",
+    "type": "SOLD",
+    "price": 499,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-04-21T15:49:29.963+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-04-sold-2026-04-13T18:02:08.5+00:00",
+    "set": "OP-04",
+    "type": "SOLD",
+    "price": 515,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-04-13T18:02:08.5+00:00",
+    "qty": 2
+  },
+  {
+    "id": "OP-01-sold-2026-04-08T02:33:57.103+00:00",
+    "set": "OP-01",
+    "type": "SOLD",
+    "price": 4905,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-04-08T02:33:57.103+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-01-sold-2026-03-19T03:41:50.547+00:00",
+    "set": "OP-01",
+    "type": "SOLD",
+    "price": 6535,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-03-19T03:41:50.547+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-01-sold-2026-03-09T23:03:03.163+00:00",
+    "set": "OP-01",
+    "type": "SOLD",
+    "price": 5115,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-03-09T23:03:03.163+00:00",
     "qty": 1
   }
 ]

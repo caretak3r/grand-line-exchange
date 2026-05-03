@@ -13,11 +13,13 @@ Env vars (all optional):
   EBAY_APP_ID       — eBay Browse API app ID for real sold-comp data
   TCGPLAYER_BEARER  — TCGPlayer API bearer if you have partner access; otherwise public scrape
   DRY_RUN=1         — print but don't write
+  INITIAL_SCRAPE=1  — rebuild public/data from live TCGPlayer market/listing/sales endpoints
 """
 
 import json
 import os
 import re
+import subprocess
 import sys
 import time
 import random
@@ -35,7 +37,9 @@ TXNS = DATA_DIR / 'transactions.json'
 SETS_JS = ROOT / 'src' / 'data' / 'sets.js'
 
 DRY_RUN = os.environ.get('DRY_RUN') == '1'
+INITIAL_SCRAPE = os.environ.get('INITIAL_SCRAPE') == '1'
 EBAY_APP_ID = os.environ.get('EBAY_APP_ID')
+TCGPLAYER_MPFEV = '5106'
 
 # ─── PARSE SET METADATA FROM sets.js ───────────────────────────────────────
 def load_sets():
@@ -77,47 +81,131 @@ def http_get(url, timeout=15):
         return r.read().decode('utf-8', errors='replace')
 
 
+def tcgplayer_headers(product_id=None):
+    headers = {
+        'User-Agent': USER_AGENT,
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Origin': 'https://www.tcgplayer.com',
+    }
+    if product_id:
+        headers['Referer'] = f'https://www.tcgplayer.com/product/{product_id}'
+    return headers
+
+
+def curl_json(url, body=None, timeout=15, product_id=None):
+    headers = tcgplayer_headers(product_id)
+    cmd = ['curl', '-sS', '--max-time', str(timeout)]
+    if body is not None:
+        cmd.extend(['-X', 'POST', '-H', 'Content-Type: application/json'])
+    for key, value in headers.items():
+        cmd.extend(['-H', f'{key}: {value}'])
+    if body is not None:
+        cmd.extend(['--data', json.dumps(body)])
+    cmd.append(url)
+    out = subprocess.check_output(cmd, text=True)
+    return json.loads(out)
+
+
+def request_json(url, body=None, timeout=15, product_id=None, curl_fallback=False):
+    data = json.dumps(body).encode('utf-8') if body is not None else None
+    headers = tcgplayer_headers(product_id)
+    if body is not None:
+        headers['Content-Type'] = 'application/json'
+    req = Request(url, data=data, headers=headers, method='POST' if body is not None else 'GET')
+    try:
+        with urlopen(req, timeout=timeout) as r:
+            return json.loads(r.read().decode('utf-8', errors='replace'))
+    except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as e:
+        if curl_fallback:
+            return curl_json(url, body=body, timeout=timeout, product_id=product_id)
+        raise e
+
+
+def money(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def fetch_tcgplayer_price(product_id):
     """
-    Fetch market price from TCGPlayer product page.
-    They embed price data in JSON-LD and inline <script> blocks.
-    Returns dict {marketPrice, lowPrice, listings} or None.
+    Fetch market data from TCGPlayer's marketplace endpoint.
+    Returns dict {marketPrice, lowPrice, lowestPriceWithShipping, listings, productName} or None.
     """
-    url = f'https://www.tcgplayer.com/product/{product_id}'
+    url = f'https://mp-search-api.tcgplayer.com/v2/product/{product_id}/details?mpfev={TCGPLAYER_MPFEV}'
     try:
-        html = http_get(url)
-    except (URLError, HTTPError, TimeoutError) as e:
+        data = request_json(url, product_id=product_id)
+    except (URLError, HTTPError, TimeoutError, json.JSONDecodeError) as e:
         print(f'  fetch failed for {product_id}: {e}')
         return None
 
-    result = {}
+    market_price = money(data.get('marketPrice'))
+    low_price = money(data.get('lowestPrice'))
+    low_with_shipping = money(data.get('lowestPriceWithShipping'))
+    if not market_price and (low_with_shipping or low_price):
+        market_price = low_with_shipping or low_price
+    if not market_price:
+        return None
+    return {
+        'marketPrice': market_price,
+        'lowPrice': low_price,
+        'lowestPriceWithShipping': low_with_shipping,
+        'listings': int(money(data.get('sellers'))),
+        'productName': data.get('productName', ''),
+        'sku': (data.get('skus') or [{}])[0].get('sku'),
+    }
 
-    # 1) JSON-LD with offers
-    for m in re.finditer(r'<script[^>]*type="application/ld\+json"[^>]*>(.*?)</script>', html, re.DOTALL):
-        try:
-            obj = json.loads(m.group(1).strip())
-            offers = obj.get('offers') if isinstance(obj, dict) else None
-            if isinstance(offers, dict):
-                if 'lowPrice' in offers:
-                    result['lowPrice'] = float(offers['lowPrice'])
-                if 'price' in offers:
-                    result['marketPrice'] = float(offers['price'])
-                if 'offerCount' in offers:
-                    result['listings'] = int(offers['offerCount'])
-        except (json.JSONDecodeError, ValueError, TypeError):
-            continue
 
-    # 2) Inline market price marker
-    m = re.search(r'"marketPrice"\s*:\s*([\d.]+)', html)
-    if m and 'marketPrice' not in result:
-        result['marketPrice'] = float(m.group(1))
+def fetch_tcgplayer_listings(product_id, size=3):
+    url = f'https://mp-search-api.tcgplayer.com/v1/product/{product_id}/listings?mpfev={TCGPLAYER_MPFEV}'
+    body = {
+        'from': 0,
+        'size': size,
+        'sort': {'field': 'price+shipping', 'order': 'asc'},
+        'filters': {
+            'term': {
+                'sellerStatus': 'Live',
+                'channelId': 0,
+                'language': ['English'],
+                'listingType': 'standard',
+            },
+            'range': {'quantity': {'gte': 1}},
+            'exclude': {'listingType': 'custom'},
+        },
+        'context': {'cart': {}, 'shippingCountry': 'US'},
+    }
+    try:
+        data = request_json(url, body=body, product_id=product_id)
+    except (URLError, HTTPError, TimeoutError, json.JSONDecodeError) as e:
+        print(f'  listings fetch failed for {product_id}: {e}')
+        return {'totalResults': 0, 'listings': []}
+    result = (data.get('results') or [{}])[0]
+    return {
+        'totalResults': int(money(result.get('totalResults'))),
+        'listings': result.get('results') or [],
+    }
 
-    # 3) Listings count fallback
-    m = re.search(r'(\d+)\s*Listings?\b', html)
-    if m and 'listings' not in result:
-        result['listings'] = int(m.group(1))
 
-    return result if result.get('marketPrice') or result.get('lowPrice') else None
+def fetch_tcgplayer_latest_sales(product_id, product_name=''):
+    url = f'https://mpapi.tcgplayer.com/v2/product/{product_id}/latestsales?mpfev={TCGPLAYER_MPFEV}'
+    try:
+        data = request_json(url, body={}, product_id=product_id, curl_fallback=True)
+        product_name = product_name.strip().lower()
+        sales = []
+        for sale in data.get('data') or []:
+            if sale.get('condition') != 'Unopened' or sale.get('language') != 'English':
+                continue
+            if sale.get('listingType') != 'ListingWithoutPhotos' or str(sale.get('customListingId')) != '0':
+                continue
+            if product_name and sale.get('title', '').strip().lower() != product_name:
+                continue
+            sales.append(sale)
+        return sales
+    except (subprocess.CalledProcessError, URLError, HTTPError, TimeoutError, json.JSONDecodeError) as e:
+        print(f'  latest sales fetch failed for {product_id}: {e}')
+        return []
 
 
 # ─── EBAY SOLD COMPS (OPTIONAL) ────────────────────────────────────────────
@@ -196,6 +284,50 @@ def count_positive_quotes(quotes):
     return sum(1 for q in quotes.values() if q.get('price', 0) > 0)
 
 
+def sale_total(sale):
+    return money(sale.get('purchasePrice')) + money(sale.get('shippingPrice'))
+
+
+def sale_quantity(sale):
+    return max(1, int(money(sale.get('quantity')) or 1))
+
+
+def sale_date(sale):
+    order_date = sale.get('orderDate') or ''
+    return order_date[:10] if len(order_date) >= 10 else None
+
+
+def build_history_from_sales(sales, fallback_price, today):
+    hist = []
+    for sale in sales:
+        order_date = sale.get('orderDate') or ''
+        label = order_date[:16].replace('T', ' ') if len(order_date) >= 16 else sale_date(sale)
+        price = sale_total(sale)
+        if not label or price <= 0:
+            continue
+        hist.append({'date': label, 'price': round(price, 2), 'volume': sale_quantity(sale)})
+
+    hist.sort(key=lambda row: row['date'])
+    now_label = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')
+
+    if fallback_price > 0 and (not hist or hist[-1]['date'] != now_label):
+        hist.append({'date': now_label, 'price': fallback_price, 'volume': 1})
+    return hist[-365:]
+
+
+def count_sales_since(sales, days):
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    total = 0
+    for sale in sales:
+        try:
+            order_date = datetime.fromisoformat(sale.get('orderDate', '').replace('Z', '+00:00'))
+        except ValueError:
+            continue
+        if order_date >= cutoff:
+            total += sale_quantity(sale)
+    return total
+
+
 # ─── MAIN UPDATE LOGIC ─────────────────────────────────────────────────────
 def main():
     print(f'─── Grand Line Exchange · price update · {datetime.now(timezone.utc).isoformat()} ───')
@@ -205,6 +337,9 @@ def main():
     history = json.loads(HISTORY.read_text()) if HISTORY.exists() else {}
     txns = json.loads(TXNS.read_text()) if TXNS.exists() else []
     sets = load_sets()
+    if INITIAL_SCRAPE:
+        history = {}
+        txns = []
     print(f'Loaded {len(sets)} tracked sets.')
 
     today = datetime.now(timezone.utc).date().isoformat()
@@ -217,24 +352,39 @@ def main():
         prev_quote = market.get('quotes', {}).get(code, {})
 
         live = fetch_tcgplayer_price(s['tcgProductId'])
+        listings_snapshot = fetch_tcgplayer_listings(s['tcgProductId']) if live else {'totalResults': 0, 'listings': []}
+        latest_sales = fetch_tcgplayer_latest_sales(s['tcgProductId'], live.get('productName', '')) if live else []
         # polite: small delay between requests
-        time.sleep(0.6 + random.random() * 0.4)
+        time.sleep(0.25 + random.random() * 0.25)
 
         if live and live.get('marketPrice'):
             price = round(live['marketPrice'])
-            listings = live.get('listings', prev_quote.get('listings', 0))
+            listings = listings_snapshot.get('totalResults') or live.get('listings') or prev_quote.get('listings', 0)
             fetched += 1
-            print(f'  ✓ {code}: ${price} (listings={listings})')
-            # synthesize a transaction event for the tape
+            print(f'  ✓ {code}: ${price} (listings={listings}) — {live.get("productName", "TCGPlayer")}')
+
             new_txns.append({
-                'id': f'{code}-{int(time.time())}',
+                'id': f'{code}-listed-{int(time.time())}',
                 'set': code,
                 'type': 'LISTED',
-                'price': price,
+                'price': round(live.get('lowestPriceWithShipping') or live.get('lowPrice') or price),
                 'venue': 'TCGPlayer',
                 'timestamp': datetime.now(timezone.utc).isoformat(),
                 'qty': 1,
             })
+            for idx, sale in enumerate(latest_sales[:5]):
+                total = sale_total(sale)
+                if total <= 0:
+                    continue
+                new_txns.append({
+                    'id': f'{code}-sold-{sale.get("orderDate", idx)}',
+                    'set': code,
+                    'type': 'SOLD',
+                    'price': round(total),
+                    'venue': 'TCGPlayer',
+                    'timestamp': sale.get('orderDate') or datetime.now(timezone.utc).isoformat(),
+                    'qty': sale_quantity(sale),
+                })
         else:
             # keep previous price, just refresh derived metrics
             price = prev_quote.get('price', 0)
@@ -250,14 +400,16 @@ def main():
                 ebay_updates += 1
                 print(f'    eBay blend: avg ${ebay["avg_sold"]} over {ebay["sold_count"]} sales')
 
-        # Append today's price to history
-        hist = history.get(code, [])
-        if hist and hist[-1].get('date') == today:
-            hist[-1]['price'] = price
-        elif price > 0:
-            hist.append({'date': today, 'price': price, 'volume': prev_quote.get('volume30d', 0) // 30 or 1})
-        # Keep last 365 days
-        hist = hist[-365:]
+        if INITIAL_SCRAPE:
+            hist = build_history_from_sales(latest_sales, price, today)
+        else:
+            hist = history.get(code, [])
+            if hist and hist[-1].get('date') == today:
+                hist[-1]['price'] = price
+            elif price > 0:
+                hist.append({'date': today, 'price': price, 'volume': prev_quote.get('volume30d', 0) // 30 or 1})
+            # Keep last 365 days
+            hist = hist[-365:]
         history[code] = hist
 
         # Compute window metrics
@@ -270,20 +422,22 @@ def main():
         if len(prices) >= 30:
             price_30d_ago = prices[-30]
             change30d = round((price - price_30d_ago) / price_30d_ago * 100, 1) if price_30d_ago else 0
+        elif INITIAL_SCRAPE and len(prices) >= 2:
+            change30d = round((price - prices[0]) / prices[0] * 100, 1) if prices[0] else 0
         else:
             change30d = prev_quote.get('change30d', 0)
 
-        # Volume estimates: keep prior unless we have better data
-        vol30 = prev_quote.get('volume30d', 0)
-        sold7 = prev_quote.get('soldLast7d', 0)
+        vol30 = count_sales_since(latest_sales, 30) or prev_quote.get('volume30d', 0)
+        sold7 = count_sales_since(latest_sales, 7) or prev_quote.get('soldLast7d', 0)
 
-        bid = round(price * 0.95) if price else 0
-        ask = round(price * 1.05) if price else 0
+        ask = round((live or {}).get('lowestPriceWithShipping') or (live or {}).get('lowPrice') or price * 1.05) if price else 0
+        bid_basis = min(price, ask) if ask else price
+        bid = round(bid_basis * 0.95) if bid_basis else 0
         spread = round(((ask - bid) / max(1, (bid + ask) / 2)) * 100, 1) if price else 0
 
         new_quotes[code] = {
             'price': price,
-            'prev': prev_quote.get('price', price),
+            'prev': price if INITIAL_SCRAPE else prev_quote.get('price', price),
             'change30d': change30d,
             'high52w': high52w,
             'low52w': low52w,
@@ -312,12 +466,15 @@ def main():
     if new_positive == 0:
         raise RuntimeError('No positive quotes produced; refusing to write empty market data.')
 
-    # Merge new transactions with existing tape, keep last 100
-    txns = (new_txns + txns)[:100]
+    if INITIAL_SCRAPE:
+        txns = new_txns
+    else:
+        txns = new_txns + txns
+    txns = sorted(txns, key=lambda x: x.get('timestamp', ''), reverse=True)[:100]
 
     out_market = {
         'updatedAt': datetime.now(timezone.utc).isoformat(),
-        'source': 'tcgplayer' + (' + ebay' if EBAY_APP_ID else ''),
+        'source': 'tcgplayer initial scrape' if INITIAL_SCRAPE else 'tcgplayer' + (' + ebay' if EBAY_APP_ID else ''),
         'fetched': fetched,
         'kept': kept,
         'quotes': new_quotes,
@@ -330,9 +487,9 @@ def main():
         return
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    MARKET.write_text(json.dumps(out_market, indent=2))
-    HISTORY.write_text(json.dumps(history, indent=2))
-    TXNS.write_text(json.dumps(txns, indent=2))
+    MARKET.write_text(json.dumps(out_market, indent=2) + '\n')
+    HISTORY.write_text(json.dumps(history, indent=2) + '\n')
+    TXNS.write_text(json.dumps(txns, indent=2) + '\n')
     print(f'✓ Wrote {MARKET.relative_to(ROOT)}, {HISTORY.relative_to(ROOT)}, {TXNS.relative_to(ROOT)}')
 
 

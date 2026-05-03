@@ -167,7 +167,7 @@ function MoversPanel({ title, Icon, color, sets, onSelect }) {
 // ─── MAIN ──────────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const { loading, error, market, history, txns, reload } = useMarketData();
-  const [selectedSet, setSelectedSet] = useState('OP-14');
+  const [selectedSet, setSelectedSet] = useState('OP-13');
   const [sortKey, setSortKey] = useState('change30d');
   const [sortDir, setSortDir] = useState('desc');
   const [filterTier, setFilterTier] = useState('all');
