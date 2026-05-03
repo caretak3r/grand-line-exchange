@@ -31,8 +31,8 @@ jobs:
           node-version: 24
           package-manager-cache: false # Explicitly disable caching if you don't have a lockfile
           check-latest: true
+      - run: npm install
       - run: npm ci
-      - run: npm install 
       - name: Build
         run: npm run build
         env:
