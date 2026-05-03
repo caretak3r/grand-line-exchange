@@ -3,7 +3,7 @@ name: Update Prices
 on:
   schedule:
     # Every 6 hours at :15 past (avoids the top-of-hour rush on GH runners)
-    - cron: '15 */6 * * *'
+    - cron: '15 */1 * * *'
   workflow_dispatch:    # allows manual trigger from the Actions tab
     inputs:
       dry_run:
@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 1
           token: ${{ secrets.GITHUB_TOKEN }}
