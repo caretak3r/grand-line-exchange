@@ -1,0 +1,53 @@
+name: Update Prices
+
+on:
+  schedule:
+    # Every 6 hours at :15 past (avoids the top-of-hour rush on GH runners)
+    - cron: '15 */6 * * *'
+  workflow_dispatch:    # allows manual trigger from the Actions tab
+    inputs:
+      dry_run:
+        description: 'Run without committing changes'
+        required: false
+        default: 'false'
+
+permissions:
+  contents: write       # needed to commit updated JSON back to the repo
+
+concurrency:
+  group: update-prices
+  cancel-in-progress: false
+
+jobs:
+  fetch-and-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run price scraper
+        env:
+          EBAY_APP_ID: ${{ secrets.EBAY_APP_ID }}
+          DRY_RUN: ${{ github.event.inputs.dry_run == 'true' && '1' || '0' }}
+        run: python scripts/update-prices.py
+
+      - name: Commit and push if changed
+        if: github.event.inputs.dry_run != 'true'
+        run: |
+          git config user.name  "grand-line-bot"
+          git config user.email "grand-line-bot@users.noreply.github.com"
+          git add public/data/market.json public/data/history.json public/data/transactions.json
+          if git diff --staged --quiet; then
+            echo "No price changes to commit."
+          else
+            git commit -m "📊 price update $(date -u +'%Y-%m-%d %H:%MZ')"
+            git push
+            echo "Committed price updates."
+          fi
