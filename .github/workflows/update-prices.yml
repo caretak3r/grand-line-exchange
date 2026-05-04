@@ -2,8 +2,8 @@ name: Update Prices
 
 on:
   schedule:
-    # Every 6 hours at :15 past (avoids the top-of-hour rush on GH runners)
-    - cron: '15 */1 * * *'
+    # Every hour at :15 past (avoids the top-of-hour rush on GH runners)
+    - cron: '15 * * * *'
   workflow_dispatch:    # allows manual trigger from the Actions tab
     inputs:
       dry_run:
@@ -35,6 +35,7 @@ jobs:
       - name: Run price scraper
         env:
           EBAY_APP_ID: ${{ secrets.EBAY_APP_ID }}
+          TCGPLAYER_BEARER: ${{ secrets.TCGPLAYER_BEARER }}
           DRY_RUN: ${{ github.event.inputs.dry_run == 'true' && '1' || '0' }}
         run: python scripts/update-prices.py
 
@@ -43,20 +44,35 @@ jobs:
         run: |
           python - <<'PY'
           import json
+          import re
+          from collections import Counter
           from pathlib import Path
 
+          set_codes = re.findall(r"code:\s*['\"]([^'\"]+)['\"]", Path("src/data/sets.js").read_text())
           market = json.loads(Path("public/data/market.json").read_text())
           history = json.loads(Path("public/data/history.json").read_text())
+          txns = json.loads(Path("public/data/transactions.json").read_text())
           quotes = market.get("quotes", {})
-          positive_quotes = sum(1 for q in quotes.values() if q.get("price", 0) > 0)
-          nonempty_history = sum(1 for rows in history.values() if rows)
+          positive_quotes = [code for code in set_codes if quotes.get(code, {}).get("price", 0) > 0]
+          missing_quotes = [code for code in set_codes if code not in quotes]
+          missing_history = [code for code in set_codes if not history.get(code)]
+          duplicate_txn_ids = [txn_id for txn_id, count in Counter(t.get("id") for t in txns if t.get("id")).items() if count > 1]
+          non_sold_txns = [t.get("id") for t in txns if t.get("type") != "SOLD"]
 
-          if positive_quotes == 0:
-              raise SystemExit("No positive market quotes found; refusing to commit empty data.")
-          if nonempty_history == 0:
-              raise SystemExit("No chart history found; refusing to commit empty data.")
+          if len(set_codes) != len(set(set_codes)):
+              raise SystemExit("Duplicate set codes found in src/data/sets.js.")
+          if missing_quotes:
+              raise SystemExit(f"Missing market quotes for tracked sets: {missing_quotes}")
+          if len(positive_quotes) != len(set_codes):
+              raise SystemExit(f"Non-positive quotes for tracked sets: {sorted(set(set_codes) - set(positive_quotes))}")
+          if missing_history:
+              raise SystemExit(f"Missing chart history for tracked sets: {missing_history}")
+          if duplicate_txn_ids:
+              raise SystemExit(f"Duplicate transaction ids found: {duplicate_txn_ids[:5]}")
+          if non_sold_txns:
+              raise SystemExit(f"transactions.json contains non-sale rows: {non_sold_txns[:5]}")
 
-          print(f"Validated {positive_quotes} positive quotes and {nonempty_history} history series.")
+          print(f"Validated {len(positive_quotes)}/{len(set_codes)} tracked quotes, {len(history)} history series, and {len(txns)} sale transactions.")
           PY
 
       - name: Commit and push if changed

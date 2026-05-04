@@ -10,6 +10,9 @@ on:
       - 'package.json'
       - 'vite.config.js'
       - '.github/workflows/deploy.yml'
+  workflow_run:
+    workflows: ['Update Prices']
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -23,9 +26,12 @@ concurrency:
 
 jobs:
   build:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: main
       - uses: actions/setup-node@v6
         with:
           node-version: 24

@@ -39,6 +39,7 @@ SETS_JS = ROOT / 'src' / 'data' / 'sets.js'
 DRY_RUN = os.environ.get('DRY_RUN') == '1'
 INITIAL_SCRAPE = os.environ.get('INITIAL_SCRAPE') == '1'
 EBAY_APP_ID = os.environ.get('EBAY_APP_ID')
+TCGPLAYER_BEARER = os.environ.get('TCGPLAYER_BEARER')
 TCGPLAYER_MPFEV = '5106'
 
 # ─── PARSE SET METADATA FROM sets.js ───────────────────────────────────────
@@ -90,6 +91,8 @@ def tcgplayer_headers(product_id=None):
         'Accept-Language': 'en-US,en;q=0.9',
         'Origin': 'https://www.tcgplayer.com',
     }
+    if TCGPLAYER_BEARER:
+        headers['Authorization'] = f'Bearer {TCGPLAYER_BEARER}'
     if product_id:
         headers['Referer'] = f'https://www.tcgplayer.com/product/{product_id}'
     return headers
@@ -207,7 +210,7 @@ def fetch_tcgplayer_latest_sales(product_id, product_name=''):
         return sales
     except (subprocess.CalledProcessError, URLError, HTTPError, TimeoutError, json.JSONDecodeError) as e:
         print(f'  latest sales fetch failed for {product_id}: {e}')
-        return []
+        return None
 
 
 # ─── EBAY SOLD COMPS (OPTIONAL) ────────────────────────────────────────────
@@ -294,17 +297,36 @@ def sale_quantity(sale):
     return max(1, int(money(sale.get('quantity')) or 1))
 
 
+def parse_datetime(value):
+    if not value:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    if text.endswith('Z'):
+        text = text[:-1] + '+00:00'
+    if ' ' in text and 'T' not in text:
+        text = text.replace(' ', 'T')
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        try:
+            parsed = datetime.strptime(text[:10], '%Y-%m-%d')
+        except ValueError:
+            return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
 def sale_date(sale):
     order_date = sale.get('orderDate') or ''
     return order_date[:10] if len(order_date) >= 10 else None
 
 
 def history_sort_key(row):
-    date = str(row.get('date') or '')
-    try:
-        return datetime.fromisoformat(date.replace(' ', 'T').replace('Z', '+00:00')).timestamp()
-    except ValueError:
-        return 0
+    parsed = parse_datetime(row.get('date'))
+    return parsed.timestamp() if parsed else 0
 
 
 def history_row_key(row):
@@ -349,7 +371,7 @@ def current_market_point(price, today):
 
 def sales_history_points(sales):
     points = []
-    for sale in sales:
+    for sale in sales or []:
         order_date = sale.get('orderDate') or ''
         label = order_date[:16].replace('T', ' ') if len(order_date) >= 16 else sale_date(sale)
         price = sale_total(sale)
@@ -370,26 +392,108 @@ def build_verified_history(existing, release_date, sales, current_price, today, 
         release_anchor(release_date),
         current_market_point(current_price, today),
     ] if p]
-    additions.extend(sales_history_points(sales))
+    additions.extend(sales_history_points(sales or []))
     return merge_history_points([] if reset else existing, additions)
 
 
-def count_sales_since(sales, days):
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+def history_prices_since(rows, days, now):
+    cutoff = now - timedelta(days=days)
+    prices = []
+    for row in rows or []:
+        price = money(row.get('price'))
+        parsed = parse_datetime(row.get('date'))
+        if price > 0 and parsed and parsed >= cutoff:
+            prices.append(price)
+    return prices
+
+
+def price_at_or_before(rows, cutoff):
+    candidates = []
+    for row in rows or []:
+        price = money(row.get('price'))
+        parsed = parse_datetime(row.get('date'))
+        if price > 0 and parsed and parsed <= cutoff:
+            candidates.append((parsed, price))
+    if not candidates:
+        return None
+    return sorted(candidates, key=lambda x: x[0])[-1][1]
+
+
+def history_sales_volume_since(rows, days, now):
+    cutoff = now - timedelta(days=days)
     total = 0
-    for sale in sales:
-        try:
-            order_date = datetime.fromisoformat(sale.get('orderDate', '').replace('Z', '+00:00'))
-        except ValueError:
+    for row in rows or []:
+        if row.get('source') != 'tcgplayer latest sale':
             continue
-        if order_date >= cutoff:
-            total += sale_quantity(sale)
+        parsed = parse_datetime(row.get('date'))
+        if parsed and parsed >= cutoff:
+            total += max(0, int(money(row.get('volume'))))
     return total
+
+
+def sale_transaction_id(code, sale, idx=0):
+    order_date = sale.get('orderDate') or f'unknown-{idx}'
+    cents = int(round(sale_total(sale) * 100))
+    qty = sale_quantity(sale)
+    return f'{code}-sold-{order_date}-{qty}-{cents}'
+
+
+def transaction_sort_key(txn):
+    parsed = parse_datetime(txn.get('timestamp'))
+    return parsed.timestamp() if parsed else 0
+
+
+def sale_transactions_for_interval(code, sales, interval_start, existing_ids):
+    txns = []
+    for idx, sale in enumerate(sales or []):
+        sold_at = parse_datetime(sale.get('orderDate'))
+        if interval_start and (not sold_at or sold_at <= interval_start):
+            continue
+        total = sale_total(sale)
+        if total <= 0:
+            continue
+        txn_id = sale_transaction_id(code, sale, idx)
+        if txn_id in existing_ids:
+            continue
+        existing_ids.add(txn_id)
+        txns.append({
+            'id': txn_id,
+            'set': code,
+            'type': 'SOLD',
+            'price': round(total, 2),
+            'venue': 'TCGPlayer',
+            'timestamp': sale.get('orderDate') or datetime.now(timezone.utc).isoformat(),
+            'qty': sale_quantity(sale),
+        })
+    return txns
+
+
+def compact_transactions(txns, limit=100):
+    compacted = []
+    seen = set()
+    for txn in sorted(txns or [], key=transaction_sort_key, reverse=True):
+        if txn.get('type') != 'SOLD':
+            continue
+        key = txn.get('id') or (
+            txn.get('set'),
+            txn.get('type'),
+            txn.get('timestamp'),
+            txn.get('price'),
+            txn.get('qty'),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        compacted.append(txn)
+        if len(compacted) >= limit:
+            break
+    return compacted
 
 
 # ─── MAIN UPDATE LOGIC ─────────────────────────────────────────────────────
 def main():
-    print(f'─── Grand Line Exchange · price update · {datetime.now(timezone.utc).isoformat()} ───')
+    now = datetime.now(timezone.utc)
+    print(f'─── Grand Line Exchange · price update · {now.isoformat()} ───')
 
     # Load existing state
     market = json.loads(MARKET.read_text()) if MARKET.exists() else {'quotes': {}}
@@ -399,9 +503,15 @@ def main():
     if INITIAL_SCRAPE:
         history = {}
         txns = []
+    else:
+        txns = compact_transactions(txns)
+    interval_start = None if INITIAL_SCRAPE else parse_datetime(market.get('updatedAt'))
+    existing_txn_ids = {txn.get('id') for txn in txns if txn.get('id')}
     print(f'Loaded {len(sets)} tracked sets.')
+    if interval_start:
+        print(f'Only adding TCGPlayer sales after previous run: {interval_start.isoformat()}')
 
-    today = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')
+    today = now.strftime('%Y-%m-%d %H:%M')
     new_quotes = {}
     fetched, kept, ebay_updates = 0, 0, 0
     new_txns = []
@@ -412,39 +522,18 @@ def main():
 
         live = fetch_tcgplayer_price(s['tcgProductId'])
         listings_snapshot = fetch_tcgplayer_listings(s['tcgProductId']) if live else {'totalResults': 0, 'listings': []}
-        latest_sales = fetch_tcgplayer_latest_sales(s['tcgProductId'], live.get('productName', '')) if live else []
+        latest_sales = fetch_tcgplayer_latest_sales(s['tcgProductId'], live.get('productName', '')) if live else None
+        sales_for_history = latest_sales or []
         # polite: small delay between requests
         time.sleep(0.25 + random.random() * 0.25)
 
         has_live_price = bool(live and live.get('marketPrice'))
         if has_live_price:
-            price = round(live['marketPrice'])
+            price = round(live['marketPrice'], 2)
             listings = listings_snapshot.get('totalResults') or live.get('listings') or prev_quote.get('listings', 0)
             fetched += 1
             print(f'  ✓ {code}: ${price} (listings={listings}) — {live.get("productName", "TCGPlayer")}')
-
-            new_txns.append({
-                'id': f'{code}-listed-{int(time.time())}',
-                'set': code,
-                'type': 'LISTED',
-                'price': round(live.get('lowestPriceWithShipping') or live.get('lowPrice') or price),
-                'venue': 'TCGPlayer',
-                'timestamp': datetime.now(timezone.utc).isoformat(),
-                'qty': 1,
-            })
-            for idx, sale in enumerate(latest_sales[:5]):
-                total = sale_total(sale)
-                if total <= 0:
-                    continue
-                new_txns.append({
-                    'id': f'{code}-sold-{sale.get("orderDate", idx)}',
-                    'set': code,
-                    'type': 'SOLD',
-                    'price': round(total),
-                    'venue': 'TCGPlayer',
-                    'timestamp': sale.get('orderDate') or datetime.now(timezone.utc).isoformat(),
-                    'qty': sale_quantity(sale),
-                })
+            new_txns.extend(sale_transactions_for_interval(code, sales_for_history, interval_start, existing_txn_ids))
         else:
             # keep previous price, just refresh derived metrics
             price = prev_quote.get('price', 0)
@@ -456,14 +545,14 @@ def main():
         if EBAY_APP_ID and price > 0:
             ebay = fetch_ebay_sold(f'one piece {code} booster box english sealed', EBAY_APP_ID)
             if ebay:
-                price = round((price + ebay['avg_sold']) / 2)  # blend
+                price = round((price + ebay['avg_sold']) / 2, 2)  # blend
                 ebay_updates += 1
                 print(f'    eBay blend: avg ${ebay["avg_sold"]} over {ebay["sold_count"]} sales')
 
         hist = build_verified_history(
             history.get(code, []),
             s.get('released'),
-            latest_sales,
+            sales_for_history,
             price if has_live_price else 0,
             today,
             reset=INITIAL_SCRAPE,
@@ -474,23 +563,28 @@ def main():
         prices = [money(h.get('price')) for h in hist if money(h.get('price')) > 0]
         if not prices:
             continue
-        high52w = max(prices[-365:]) if len(prices) >= 1 else price
-        low52w = min(prices[-365:]) if len(prices) >= 1 else price
+        prices_52w = history_prices_since(hist, 365, now) or prices
+        high52w = max(prices_52w)
+        low52w = min(prices_52w)
         # 30d change
-        if len(prices) >= 30:
-            price_30d_ago = prices[-30]
+        price_30d_ago = price_at_or_before(hist, now - timedelta(days=30))
+        if price_30d_ago:
             change30d = round((price - price_30d_ago) / price_30d_ago * 100, 1) if price_30d_ago else 0
         elif INITIAL_SCRAPE and len(prices) >= 2:
             change30d = round((price - prices[0]) / prices[0] * 100, 1) if prices[0] else 0
         else:
             change30d = prev_quote.get('change30d', 0)
 
-        vol30 = count_sales_since(latest_sales, 30) or prev_quote.get('volume30d', 0)
-        sold7 = count_sales_since(latest_sales, 7) or prev_quote.get('soldLast7d', 0)
+        if latest_sales is None:
+            vol30 = prev_quote.get('volume30d', history_sales_volume_since(hist, 30, now))
+            sold7 = prev_quote.get('soldLast7d', history_sales_volume_since(hist, 7, now))
+        else:
+            vol30 = history_sales_volume_since(hist, 30, now)
+            sold7 = history_sales_volume_since(hist, 7, now)
 
-        ask = round((live or {}).get('lowestPriceWithShipping') or (live or {}).get('lowPrice') or price * 1.05) if price else 0
+        ask = round((live or {}).get('lowestPriceWithShipping') or (live or {}).get('lowPrice') or price * 1.05, 2) if price else 0
         bid_basis = min(price, ask) if ask else price
-        bid = round(bid_basis * 0.95) if bid_basis else 0
+        bid = round(bid_basis * 0.95, 2) if bid_basis else 0
         spread = round(((ask - bid) / max(1, (bid + ask) / 2)) * 100, 1) if price else 0
 
         new_quotes[code] = {
@@ -524,11 +618,11 @@ def main():
     if new_positive == 0:
         raise RuntimeError('No positive quotes produced; refusing to write empty market data.')
 
-    if INITIAL_SCRAPE:
-        txns = new_txns
-    else:
-        txns = new_txns + txns
-    txns = sorted(txns, key=lambda x: x.get('timestamp', ''), reverse=True)[:100]
+    missing_quotes = [s['code'] for s in sets if s['code'] not in new_quotes]
+    if missing_quotes:
+        raise RuntimeError(f'Missing market quotes for tracked sets: {", ".join(missing_quotes)}')
+
+    txns = compact_transactions(new_txns if INITIAL_SCRAPE else new_txns + txns)
 
     out_market = {
         'updatedAt': datetime.now(timezone.utc).isoformat(),
@@ -538,7 +632,7 @@ def main():
         'quotes': new_quotes,
     }
 
-    print(f'\n→ {fetched} fetched, {ebay_updates} eBay-enriched, {kept} kept from cache.')
+    print(f'\n→ {fetched} fetched, {ebay_updates} eBay-enriched, {kept} kept from cache, {len(new_txns)} new sales added.')
 
     if DRY_RUN:
         print('DRY_RUN=1 — not writing files.')
