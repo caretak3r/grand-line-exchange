@@ -1,5 +1,266 @@
 [
   {
+    "id": "PRB-02-listed-1777934229",
+    "set": "PRB-02",
+    "type": "LISTED",
+    "price": 334,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-04T22:37:09.600945+00:00",
+    "qty": 1
+  },
+  {
+    "id": "PRB-01-listed-1777934228",
+    "set": "PRB-01",
+    "type": "LISTED",
+    "price": 867,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-04T22:37:08.854842+00:00",
+    "qty": 1
+  },
+  {
+    "id": "EB-03-listed-1777934228",
+    "set": "EB-03",
+    "type": "LISTED",
+    "price": 308,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-04T22:37:08.196259+00:00",
+    "qty": 1
+  },
+  {
+    "id": "EB-02-listed-1777934227",
+    "set": "EB-02",
+    "type": "LISTED",
+    "price": 500,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-04T22:37:07.615456+00:00",
+    "qty": 1
+  },
+  {
+    "id": "EB-01-listed-1777934226",
+    "set": "EB-01",
+    "type": "LISTED",
+    "price": 810,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-04T22:37:06.872743+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-16-listed-1777934226",
+    "set": "OP-16",
+    "type": "LISTED",
+    "price": 278,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-04T22:37:06.335110+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-15-listed-1777934225",
+    "set": "OP-15",
+    "type": "LISTED",
+    "price": 208,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-04T22:37:05.817143+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-14-listed-1777934225",
+    "set": "OP-14",
+    "type": "LISTED",
+    "price": 245,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-04T22:37:05.196379+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-13-listed-1777934224",
+    "set": "OP-13",
+    "type": "LISTED",
+    "price": 593,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-04T22:37:04.337568+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-12-listed-1777934223",
+    "set": "OP-12",
+    "type": "LISTED",
+    "price": 238,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-04T22:37:03.559975+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-11-listed-1777934222",
+    "set": "OP-11",
+    "type": "LISTED",
+    "price": 410,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-04T22:37:02.867869+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-10-listed-1777934222",
+    "set": "OP-10",
+    "type": "LISTED",
+    "price": 220,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-04T22:37:02.131538+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-09-listed-1777934221",
+    "set": "OP-09",
+    "type": "LISTED",
+    "price": 579,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-04T22:37:01.372015+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-08-listed-1777934220",
+    "set": "OP-08",
+    "type": "LISTED",
+    "price": 222,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-04T22:37:00.574007+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-07-listed-1777934220",
+    "set": "OP-07",
+    "type": "LISTED",
+    "price": 300,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-04T22:37:00.038713+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-06-listed-1777934217",
+    "set": "OP-06",
+    "type": "LISTED",
+    "price": 362,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-04T22:36:57.956120+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-05-listed-1777934217",
+    "set": "OP-05",
+    "type": "LISTED",
+    "price": 1000,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-04T22:36:57.431374+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-04-listed-1777934216",
+    "set": "OP-04",
+    "type": "LISTED",
+    "price": 502,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-04T22:36:56.681240+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-03-listed-1777934215",
+    "set": "OP-03",
+    "type": "LISTED",
+    "price": 507,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-04T22:36:55.969408+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-02-listed-1777934215",
+    "set": "OP-02",
+    "type": "LISTED",
+    "price": 497,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-04T22:36:55.197877+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-01-W2-listed-1777934214",
+    "set": "OP-01-W2",
+    "type": "LISTED",
+    "price": 1650,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-04T22:36:54.243877+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-01-listed-1777934213",
+    "set": "OP-01",
+    "type": "LISTED",
+    "price": 5985,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-04T22:36:53.404641+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-16-sold-2026-05-04T22:16:35.283+00:00",
+    "set": "OP-16",
+    "type": "SOLD",
+    "price": 278,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-04T22:16:35.283+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-14-sold-2026-05-04T22:12:32.197+00:00",
+    "set": "OP-14",
+    "type": "SOLD",
+    "price": 260,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-04T22:12:32.197+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-14-sold-2026-05-04T22:12:32.16+00:00",
+    "set": "OP-14",
+    "type": "SOLD",
+    "price": 245,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-04T22:12:32.16+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-15-sold-2026-05-04T22:12:32.14+00:00",
+    "set": "OP-15",
+    "type": "SOLD",
+    "price": 208,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-04T22:12:32.14+00:00",
+    "qty": 2
+  },
+  {
+    "id": "OP-15-sold-2026-05-04T21:52:39.34+00:00",
+    "set": "OP-15",
+    "type": "SOLD",
+    "price": 208,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-04T21:52:39.34+00:00",
+    "qty": 2
+  },
+  {
+    "id": "OP-05-sold-2026-05-04T21:52:15.957+00:00",
+    "set": "OP-05",
+    "type": "SOLD",
+    "price": 1013,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-04T21:52:15.957+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-15-sold-2026-05-04T21:47:17.963+00:00",
+    "set": "OP-15",
+    "type": "SOLD",
+    "price": 209,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-04T21:47:17.963+00:00",
+    "qty": 2
+  },
+  {
     "id": "PRB-02-listed-1777930871",
     "set": "PRB-02",
     "type": "LISTED",
@@ -195,6 +456,24 @@
     "price": 208,
     "venue": "TCGPlayer",
     "timestamp": "2026-05-04T21:33:15.557+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-15-sold-2026-05-04T21:33:15.557+00:00",
+    "set": "OP-15",
+    "type": "SOLD",
+    "price": 208,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-04T21:33:15.557+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-15-sold-2026-05-04T21:17:36.513+00:00",
+    "set": "OP-15",
+    "type": "SOLD",
+    "price": 208,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-04T21:17:36.513+00:00",
     "qty": 1
   },
   {
@@ -423,6 +702,15 @@
     "qty": 1
   },
   {
+    "id": "OP-16-sold-2026-05-04T20:25:18.88+00:00",
+    "set": "OP-16",
+    "type": "SOLD",
+    "price": 278,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-04T20:25:18.88+00:00",
+    "qty": 1
+  },
+  {
     "id": "EB-03-sold-2026-05-04T20:15:43.473+00:00",
     "set": "EB-03",
     "type": "SOLD",
@@ -438,6 +726,24 @@
     "price": 318,
     "venue": "TCGPlayer",
     "timestamp": "2026-05-04T20:15:43.473+00:00",
+    "qty": 1
+  },
+  {
+    "id": "EB-03-sold-2026-05-04T20:15:43.473+00:00",
+    "set": "EB-03",
+    "type": "SOLD",
+    "price": 318,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-04T20:15:43.473+00:00",
+    "qty": 1
+  },
+  {
+    "id": "OP-16-sold-2026-05-04T19:57:38.403+00:00",
+    "set": "OP-16",
+    "type": "SOLD",
+    "price": 278,
+    "venue": "TCGPlayer",
+    "timestamp": "2026-05-04T19:57:38.403+00:00",
     "qty": 1
   },
   {
@@ -591,312 +897,6 @@
     "price": 300,
     "venue": "TCGPlayer",
     "timestamp": "2026-05-04T19:53:01.838952+00:00",
-    "qty": 1
-  },
-  {
-    "id": "OP-06-listed-1777924381",
-    "set": "OP-06",
-    "type": "LISTED",
-    "price": 362,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-04T19:53:01.074391+00:00",
-    "qty": 1
-  },
-  {
-    "id": "OP-05-listed-1777924380",
-    "set": "OP-05",
-    "type": "LISTED",
-    "price": 1000,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-04T19:53:00.334443+00:00",
-    "qty": 1
-  },
-  {
-    "id": "OP-04-listed-1777924379",
-    "set": "OP-04",
-    "type": "LISTED",
-    "price": 502,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-04T19:52:59.603484+00:00",
-    "qty": 1
-  },
-  {
-    "id": "OP-03-listed-1777924378",
-    "set": "OP-03",
-    "type": "LISTED",
-    "price": 507,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-04T19:52:58.877505+00:00",
-    "qty": 1
-  },
-  {
-    "id": "OP-02-listed-1777924378",
-    "set": "OP-02",
-    "type": "LISTED",
-    "price": 497,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-04T19:52:58.011565+00:00",
-    "qty": 1
-  },
-  {
-    "id": "OP-01-W2-listed-1777924377",
-    "set": "OP-01-W2",
-    "type": "LISTED",
-    "price": 1650,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-04T19:52:57.312198+00:00",
-    "qty": 1
-  },
-  {
-    "id": "OP-01-listed-1777924376",
-    "set": "OP-01",
-    "type": "LISTED",
-    "price": 5985,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-04T19:52:56.554720+00:00",
-    "qty": 1
-  },
-  {
-    "id": "OP-15-sold-2026-05-04T19:44:09.637+00:00",
-    "set": "OP-15",
-    "type": "SOLD",
-    "price": 208,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-04T19:44:09.637+00:00",
-    "qty": 1
-  },
-  {
-    "id": "OP-15-sold-2026-05-04T19:44:09.637+00:00",
-    "set": "OP-15",
-    "type": "SOLD",
-    "price": 208,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-04T19:44:09.637+00:00",
-    "qty": 1
-  },
-  {
-    "id": "OP-15-sold-2026-05-04T19:44:09.637+00:00",
-    "set": "OP-15",
-    "type": "SOLD",
-    "price": 208,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-04T19:44:09.637+00:00",
-    "qty": 1
-  },
-  {
-    "id": "OP-15-sold-2026-05-04T19:39:36.117+00:00",
-    "set": "OP-15",
-    "type": "SOLD",
-    "price": 208,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-04T19:39:36.117+00:00",
-    "qty": 1
-  },
-  {
-    "id": "OP-15-sold-2026-05-04T19:39:36.117+00:00",
-    "set": "OP-15",
-    "type": "SOLD",
-    "price": 208,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-04T19:39:36.117+00:00",
-    "qty": 1
-  },
-  {
-    "id": "OP-15-sold-2026-05-04T19:39:36.117+00:00",
-    "set": "OP-15",
-    "type": "SOLD",
-    "price": 208,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-04T19:39:36.117+00:00",
-    "qty": 1
-  },
-  {
-    "id": "OP-11-sold-2026-05-04T19:15:24.76+00:00",
-    "set": "OP-11",
-    "type": "SOLD",
-    "price": 405,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-04T19:15:24.76+00:00",
-    "qty": 2
-  },
-  {
-    "id": "OP-11-sold-2026-05-04T19:15:24.76+00:00",
-    "set": "OP-11",
-    "type": "SOLD",
-    "price": 405,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-04T19:15:24.76+00:00",
-    "qty": 2
-  },
-  {
-    "id": "OP-11-sold-2026-05-04T19:15:24.76+00:00",
-    "set": "OP-11",
-    "type": "SOLD",
-    "price": 405,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-04T19:15:24.76+00:00",
-    "qty": 2
-  },
-  {
-    "id": "PRB-02-listed-1777920707",
-    "set": "PRB-02",
-    "type": "LISTED",
-    "price": 334,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-04T18:51:47.012779+00:00",
-    "qty": 1
-  },
-  {
-    "id": "PRB-01-listed-1777920706",
-    "set": "PRB-01",
-    "type": "LISTED",
-    "price": 867,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-04T18:51:46.176199+00:00",
-    "qty": 1
-  },
-  {
-    "id": "EB-03-listed-1777920705",
-    "set": "EB-03",
-    "type": "LISTED",
-    "price": 308,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-04T18:51:45.593271+00:00",
-    "qty": 1
-  },
-  {
-    "id": "EB-02-listed-1777920704",
-    "set": "EB-02",
-    "type": "LISTED",
-    "price": 500,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-04T18:51:44.956634+00:00",
-    "qty": 1
-  },
-  {
-    "id": "EB-01-listed-1777920704",
-    "set": "EB-01",
-    "type": "LISTED",
-    "price": 810,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-04T18:51:44.241474+00:00",
-    "qty": 1
-  },
-  {
-    "id": "OP-16-listed-1777920703",
-    "set": "OP-16",
-    "type": "LISTED",
-    "price": 278,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-04T18:51:43.585125+00:00",
-    "qty": 1
-  },
-  {
-    "id": "OP-15-listed-1777920703",
-    "set": "OP-15",
-    "type": "LISTED",
-    "price": 208,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-04T18:51:43.050514+00:00",
-    "qty": 1
-  },
-  {
-    "id": "OP-14-listed-1777920702",
-    "set": "OP-14",
-    "type": "LISTED",
-    "price": 245,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-04T18:51:42.358719+00:00",
-    "qty": 1
-  },
-  {
-    "id": "OP-13-listed-1777920701",
-    "set": "OP-13",
-    "type": "LISTED",
-    "price": 593,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-04T18:51:41.613003+00:00",
-    "qty": 1
-  },
-  {
-    "id": "OP-12-listed-1777920701",
-    "set": "OP-12",
-    "type": "LISTED",
-    "price": 238,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-04T18:51:41.082537+00:00",
-    "qty": 1
-  },
-  {
-    "id": "OP-11-listed-1777920700",
-    "set": "OP-11",
-    "type": "LISTED",
-    "price": 405,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-04T18:51:40.470461+00:00",
-    "qty": 1
-  },
-  {
-    "id": "OP-10-listed-1777920699",
-    "set": "OP-10",
-    "type": "LISTED",
-    "price": 220,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-04T18:51:39.752586+00:00",
-    "qty": 1
-  },
-  {
-    "id": "OP-09-listed-1777920699",
-    "set": "OP-09",
-    "type": "LISTED",
-    "price": 579,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-04T18:51:39.078811+00:00",
-    "qty": 1
-  },
-  {
-    "id": "OP-08-listed-1777920698",
-    "set": "OP-08",
-    "type": "LISTED",
-    "price": 222,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-04T18:51:38.561092+00:00",
-    "qty": 1
-  },
-  {
-    "id": "OP-07-listed-1777920697",
-    "set": "OP-07",
-    "type": "LISTED",
-    "price": 300,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-04T18:51:37.810164+00:00",
-    "qty": 1
-  },
-  {
-    "id": "OP-06-listed-1777920697",
-    "set": "OP-06",
-    "type": "LISTED",
-    "price": 362,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-04T18:51:37.111197+00:00",
-    "qty": 1
-  },
-  {
-    "id": "OP-05-listed-1777920696",
-    "set": "OP-05",
-    "type": "LISTED",
-    "price": 1000,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-04T18:51:36.302172+00:00",
-    "qty": 1
-  },
-  {
-    "id": "OP-04-listed-1777920695",
-    "set": "OP-04",
-    "type": "LISTED",
-    "price": 502,
-    "venue": "TCGPlayer",
-    "timestamp": "2026-05-04T18:51:35.410790+00:00",
     "qty": 1
   }
 ]
