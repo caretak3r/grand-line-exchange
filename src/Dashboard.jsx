@@ -31,6 +31,17 @@ const fmtChartDate = (ts) => {
   const d = new Date(ts);
   return Number.isFinite(d.getTime()) ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
 };
+const fmtShortChartDate = (ts) => {
+  const d = new Date(ts);
+  return Number.isFinite(d.getTime()) ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—';
+};
+const fmtAxisDate = (rows, formatter = fmtShortChartDate) => (value) => {
+  const row = rows[Math.max(0, Math.min(rows.length - 1, Math.round(value)))];
+  return row ? formatter(row.ts) : '—';
+};
+const observationDomain = (rows) => [0, Math.max(1, rows.length - 1)];
+const pctChange = (start, end) => start ? ((end - start) / start) * 100 : 0;
+const fmtIndex = (n) => Number.isFinite(n) ? n.toFixed(1) : '—';
 const timeAgo = (iso) => {
   const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
   if (mins < 1) return 'now';
@@ -126,7 +137,7 @@ function PriceVolumeTooltip({ active, payload, label }) {
   const row = payload[0]?.payload || {};
   return (
     <div style={{ background: t.bgTertiary, border: `1px solid ${t.borderBright}`, padding: '8px 10px', fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }}>
-      <div style={{ color: t.accent, marginBottom: 6 }}>{fmtChartDate(label)}</div>
+      <div style={{ color: t.accent, marginBottom: 6 }}>{fmtChartDate(row.ts || label)}</div>
       {rows.map(r => (
         <div key={r.dataKey} style={{ display: 'flex', justifyContent: 'space-between', gap: 18, color: t.text }}>
           <span style={{ color: r.color || t.textDim }}>{labels[r.dataKey]}</span>
@@ -136,6 +147,33 @@ function PriceVolumeTooltip({ active, payload, label }) {
       {row.source && (
         <div style={{ marginTop: 6, paddingTop: 6, borderTop: `1px solid ${t.border}`, color: t.textDim }}>
           Source: <span style={{ color: t.text }}>{row.source}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function IndexTooltip({ active, payload }) {
+  if (!active || !payload?.length) return null;
+  const row = payload[0]?.payload || {};
+  return (
+    <div style={{ background: t.bgTertiary, border: `1px solid ${t.borderBright}`, padding: '8px 10px', fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }}>
+      <div style={{ color: t.accent, marginBottom: 6 }}>{fmtChartDate(row.ts)}</div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 18, color: t.text }}>
+        <span style={{ color: t.textDim }}>Index</span>
+        <span>{fmtIndex(row.index)}</span>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 18, color: t.text }}>
+        <span style={{ color: t.textDim }}>Avg price</span>
+        <span>{fmt$(row.avgPrice)}</span>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 18, color: t.text }}>
+        <span style={{ color: t.textDim }}>Coverage</span>
+        <span>{row.coverage}/{row.totalSets} boxes</span>
+      </div>
+      {row.changed && (
+        <div style={{ marginTop: 6, paddingTop: 6, borderTop: `1px solid ${t.border}`, color: t.textDim }}>
+          Last update: <span style={{ color: t.accent }}>{row.changed}</span>
         </div>
       )}
     </div>
@@ -248,7 +286,7 @@ export default function Dashboard() {
     if (!selectedHistory.length) return [];
     return selectedHistory
       .map(row => ({ ...row, ts: parseChartTime(row.date) }))
-      .filter(row => row.ts)
+      .filter(row => row.ts && row.price > 0)
       .sort((a, b) => a.ts - b.ts)
       .map((row, i, rows) => {
         const priced = rows.slice(0, i + 1).filter(p => p.price > 0);
@@ -256,17 +294,15 @@ export default function Dashboard() {
         const w30 = priced.slice(-30);
         return {
           ...row,
+          axis: i,
           ma7: w7.length ? Math.round(w7.reduce((s, p) => s + p.price, 0) / w7.length * 100) / 100 : null,
           ma30: w30.length ? Math.round(w30.reduce((s, p) => s + p.price, 0) / w30.length * 100) / 100 : null,
         };
       });
   }, [selectedHistory]);
-  const releaseTs = selected ? parseChartTime(selected.released) : null;
-  const dataStartTs = chartData[0]?.ts || releaseTs;
-  const dataEndTs = chartData[chartData.length - 1]?.ts || releaseTs;
-  const marketTs = market?.updatedAt ? parseChartTime(market.updatedAt) : Date.now();
-  const chartStart = Math.min(...[releaseTs, dataStartTs].filter(Boolean));
-  const chartEnd = Math.max(...[releaseTs, dataEndTs, marketTs].filter(Boolean));
+  const selectedFirst = chartData[0];
+  const selectedLast = chartData[chartData.length - 1];
+  const selectedAllTimeChange = selectedFirst && selectedLast ? pctChange(selectedFirst.price, selectedLast.price) : 0;
 
   const active = sets.filter(s => s.price > 0);
   const totalCap = active.reduce((sum, s) => sum + s.price * s.volume30d, 0);
@@ -279,26 +315,51 @@ export default function Dashboard() {
   const topLosers = [...active].sort((a, b) => a.change30d - b.change30d).slice(0, 5);
 
   const indexData = useMemo(() => {
-    if (!history) return [];
-    const byDate = {};
-    for (const h of Object.values(history)) {
-      for (const row of h || []) {
-        if (!row.price || row.price <= 0) continue;
-        const date = String(row.date || '').slice(0, 10);
-        if (!date) continue;
-        byDate[date] = byDate[date] || [];
-        byDate[date].push(row.price);
+    if (!history || !sets.length) return [];
+    const trackedCodes = new Set(sets.map(s => s.code));
+    const grouped = new Map();
+    for (const code of trackedCodes) {
+      for (const row of history[code] || []) {
+        const price = Number(row.price);
+        const ts = parseChartTime(row.date);
+        if (!ts || !price || price <= 0) continue;
+        const bucket = grouped.get(ts) || [];
+        bucket.push({ code, price, source: row.source });
+        grouped.set(ts, bucket);
       }
     }
-    return Object.entries(byDate)
-      .map(([date, prices]) => ({
-        date,
-        ts: parseChartTime(date),
-        index: Math.round(prices.reduce((sum, p) => sum + p, 0) / prices.length * 100) / 100,
-      }))
-      .filter(row => row.ts)
-      .sort((a, b) => a.ts - b.ts);
-  }, [history]);
+    const latest = new Map();
+    const baselines = new Map();
+    return [...grouped.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([ts, events], i) => {
+        for (const event of events) {
+          if (!baselines.has(event.code)) baselines.set(event.code, event.price);
+          latest.set(event.code, event.price);
+        }
+        const prices = sets.map(s => latest.get(s.code)).filter(p => p > 0);
+        const normalized = sets
+          .map(s => {
+            const price = latest.get(s.code);
+            const base = baselines.get(s.code);
+            return price && base ? (price / base) * 100 : null;
+          })
+          .filter(p => p > 0);
+        const changed = events.map(e => e.code).join(', ');
+        return {
+          axis: i,
+          ts,
+          index: Math.round(normalized.reduce((sum, p) => sum + p, 0) / normalized.length * 100) / 100,
+          avgPrice: Math.round(prices.reduce((sum, p) => sum + p, 0) / prices.length * 100) / 100,
+          coverage: normalized.length,
+          totalSets: sets.length,
+          changed,
+        };
+      });
+  }, [history, sets]);
+  const indexFirst = indexData[0];
+  const indexLast = indexData[indexData.length - 1];
+  const indexAllTimeChange = indexFirst && indexLast ? pctChange(indexFirst.index, indexLast.index) : 0;
 
   // ─── LOADING / ERROR STATES ────────────────────────────────────────────
   if (loading) return <LoadingScreen />;
@@ -325,9 +386,14 @@ export default function Dashboard() {
         @keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
         .spin { animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
+        .sticky-top { position: sticky; top: 0; z-index: 50; }
+        .sticky-ticker { position: sticky; top: 65px; z-index: 45; }
+        @media (max-width: 900px) {
+          .sticky-top, .sticky-ticker { position: static; }
+        }
       `}</style>
 
-      <header style={{ borderBottom: `1px solid ${t.border}`, background: t.bgSecondary, padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 50, backdropFilter: 'blur(8px)' }}>
+      <header className="sticky-top" style={{ borderBottom: `1px solid ${t.border}`, background: t.bgSecondary, padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backdropFilter: 'blur(8px)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <Anchor size={26} style={{ color: t.accent }} />
           <div>
@@ -357,7 +423,7 @@ export default function Dashboard() {
       </header>
 
       {/* TICKER */}
-      <div style={{ borderBottom: `1px solid ${t.border}`, background: t.bgPrimary, overflow: 'hidden', height: 32 }}>
+      <div className="sticky-ticker" style={{ borderBottom: `1px solid ${t.border}`, background: t.bgPrimary, overflow: 'hidden', height: 32 }}>
         <div className="ticker-scroll" style={{ display: 'inline-flex', whiteSpace: 'nowrap', height: '100%', alignItems: 'center' }}>
           {[...active, ...active].map((s, i) => (
             <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '0 24px', fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}>
@@ -407,9 +473,7 @@ export default function Dashboard() {
                     Released {selected.released} · MSRP {fmt$(selected.msrp)} · Block {selected.block || 'EXTRA'}
                   </div>
                   <div style={{ fontSize: 10, color: t.textDim, marginTop: 4, fontFamily: 'JetBrains Mono, monospace' }}>
-                    {selected.status === 'preorder'
-                      ? 'Verified TCGPlayer presale points through release date; gaps mean no verified historical point.'
-                      : 'Verified TCGPlayer points from release to current; gaps mean no verified historical point.'}
+                    All-time observation view · {fmtNum(chartData.length)} verified points · {selectedFirst ? fmtChartDate(selectedFirst.ts) : '—'} → {selectedLast ? fmtChartDate(selectedLast.ts) : '—'}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
@@ -421,7 +485,7 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div style={{ height: 300 }}>
+              <div style={{ height: 360 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart data={chartData}>
                     <defs>
@@ -431,7 +495,7 @@ export default function Dashboard() {
                       </linearGradient>
                     </defs>
                     <CartesianGrid stroke={t.grid} strokeDasharray="2 4" vertical={false} />
-                    <XAxis dataKey="ts" type="number" scale="time" domain={[chartStart || 'dataMin', chartEnd || 'dataMax']} tick={{ fill: t.textDim, fontSize: 10, fontFamily: 'JetBrains Mono, monospace' }} stroke={t.border} tickFormatter={fmtChartDate} />
+                    <XAxis dataKey="axis" type="number" domain={observationDomain(chartData)} tick={{ fill: t.textDim, fontSize: 10, fontFamily: 'JetBrains Mono, monospace' }} stroke={t.border} tickFormatter={fmtAxisDate(chartData)} />
                     <YAxis yAxisId="price" tick={{ fill: t.textDim, fontSize: 10, fontFamily: 'JetBrains Mono, monospace' }} stroke={t.border} domain={['dataMin - 20', 'dataMax + 20']} tickFormatter={(v) => `$${v}`} />
                     <YAxis yAxisId="volume" orientation="right" hide domain={[0, dataMax => Math.max(1, dataMax * 3.5)]} />
                     <Tooltip content={<PriceVolumeTooltip />} cursor={{ fill: `${t.accent}08` }} />
@@ -450,6 +514,7 @@ export default function Dashboard() {
                 <span><span style={{ color: t.info }}>┄</span> 7d MA</span>
                 <span><span style={{ color: t.sell }}>┄</span> 30d MA</span>
                 <span><span style={{ color: t.textDim }}>┄</span> MSRP</span>
+                <span>All-time Δ <span style={{ color: selectedAllTimeChange >= 0 ? t.buy : t.sell }}>{fmtPct(selectedAllTimeChange)}</span></span>
               </div>
             </div>
 
@@ -598,66 +663,73 @@ export default function Dashboard() {
           </div>
         </section>
 
-        {/* TAPE + INDEX */}
-        <section style={{ marginBottom: 24, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: 16 }}>
-          <div style={{ background: t.bgSecondary, border: `1px solid ${t.border}`, padding: 18 }}>
-            <SectionHeader title="LIVE TAPE" subtitle="Recent fills across major venues" />
-            <div style={{ maxHeight: 380, overflow: 'auto', marginTop: 12 }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }}>
-                <thead>
-                  <tr style={{ borderBottom: `1px solid ${t.border}`, color: t.textDim }}>
-                    <th style={{ textAlign: 'left', padding: '6px 8px', fontWeight: 500, letterSpacing: 1 }}>TIME</th>
-                    <th style={{ textAlign: 'left', padding: '6px 8px', fontWeight: 500, letterSpacing: 1 }}>SET</th>
-                    <th style={{ textAlign: 'left', padding: '6px 8px', fontWeight: 500, letterSpacing: 1 }}>TYPE</th>
-                    <th style={{ textAlign: 'right', padding: '6px 8px', fontWeight: 500, letterSpacing: 1 }}>PRICE</th>
-                    <th style={{ textAlign: 'right', padding: '6px 8px', fontWeight: 500, letterSpacing: 1 }}>QTY</th>
-                    <th style={{ textAlign: 'left', padding: '6px 8px', fontWeight: 500, letterSpacing: 1 }}>VENUE</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(txns || []).slice(0, 30).map(tx => (
-                    <tr key={tx.id} className="row-hover" style={{ borderBottom: `1px solid ${t.border}` }}>
-                      <td style={{ padding: '7px 8px', color: t.textDim }}>{timeAgo(tx.timestamp)}</td>
-                      <td style={{ padding: '7px 8px', color: t.accent, fontWeight: 600 }}>{tx.set}</td>
-                      <td style={{ padding: '7px 8px' }}>
-                        <span style={{ fontSize: 9, padding: '2px 5px', letterSpacing: 1, fontWeight: 700, color: tx.type === 'SOLD' ? t.buy : tx.type === 'LISTED' ? t.sell : t.warn, background: `${tx.type === 'SOLD' ? t.buy : tx.type === 'LISTED' ? t.sell : t.warn}10` }}>{tx.type}</span>
-                      </td>
-                      <td style={{ padding: '7px 8px', textAlign: 'right', color: t.textBright, fontWeight: 600 }}>{fmt$(tx.price)}</td>
-                      <td style={{ padding: '7px 8px', textAlign: 'right', color: t.text }}>{tx.qty}</td>
-                      <td style={{ padding: '7px 8px', color: t.textDim }}>{tx.venue}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div style={{ background: t.bgSecondary, border: `1px solid ${t.border}`, padding: 18 }}>
-            <SectionHeader title="GRAND LINE INDEX" subtitle="Equal-weighted average across all booster boxes" />
-            <div style={{ height: 200, marginTop: 16 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={indexData}>
-                  <defs>
-                    <linearGradient id="idxGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={t.buy} stopOpacity={0.3} />
-                      <stop offset="100%" stopColor={t.buy} stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid stroke={t.grid} strokeDasharray="2 4" vertical={false} />
-                  <XAxis dataKey="ts" type="number" scale="time" tick={{ fill: t.textDim, fontSize: 10 }} stroke={t.border} tickFormatter={fmtChartDate} />
-                  <YAxis tick={{ fill: t.textDim, fontSize: 10 }} stroke={t.border} tickFormatter={(v) => `$${v}`} />
-                  <Tooltip contentStyle={{ background: t.bgTertiary, border: `1px solid ${t.borderBright}`, fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }} labelFormatter={fmtChartDate} formatter={(v) => [fmt$(v), 'Index']} />
-                  <Area type="monotone" dataKey="index" stroke={t.buy} fill="url(#idxGrad)" strokeWidth={2} dot={false} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
+        {/* GRAND LINE INDEX */}
+        <section style={{ marginBottom: 24, background: t.bgSecondary, border: `1px solid ${t.border}`, padding: 20 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap', marginBottom: 16 }}>
+            <SectionHeader title="GRAND LINE INDEX" subtitle="All-time equal-weighted index · each booster box starts at 100 on first verified price" />
             {indexData.length > 0 && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 16 }}>
-                <DataRow label="Index Lvl" value={fmt$(indexData[indexData.length - 1].index)} color={t.accent} />
-                <DataRow label="90d Δ" value={fmtPct(((indexData[indexData.length - 1].index - indexData[0].index) / indexData[0].index) * 100)} color={t.buy} />
-                <DataRow label="Sets" value={fmtNum(active.length)} color={t.info} />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(90px, 1fr))', gap: 12, minWidth: 420 }}>
+                <DataRow label="Index Lvl" value={fmtIndex(indexLast.index)} color={t.accent} />
+                <DataRow label="All-time Δ" value={fmtPct(indexAllTimeChange)} color={indexAllTimeChange >= 0 ? t.buy : t.sell} />
+                <DataRow label="Coverage" value={`${indexLast.coverage}/${indexLast.totalSets}`} color={indexLast.coverage === indexLast.totalSets ? t.buy : t.warn} />
+                <DataRow label="Avg Box" value={fmt$(indexLast.avgPrice)} color={t.info} />
               </div>
             )}
+          </div>
+          <div style={{ height: 340 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={indexData}>
+                <defs>
+                  <linearGradient id="idxGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={t.buy} stopOpacity={0.34} />
+                    <stop offset="100%" stopColor={t.buy} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke={t.grid} strokeDasharray="2 4" vertical={false} />
+                <XAxis dataKey="axis" type="number" domain={observationDomain(indexData)} tick={{ fill: t.textDim, fontSize: 10, fontFamily: 'JetBrains Mono, monospace' }} stroke={t.border} tickFormatter={fmtAxisDate(indexData)} minTickGap={28} />
+                <YAxis tick={{ fill: t.textDim, fontSize: 10, fontFamily: 'JetBrains Mono, monospace' }} stroke={t.border} domain={['dataMin - 5', 'dataMax + 5']} tickFormatter={(v) => fmtIndex(v)} />
+                <Tooltip content={<IndexTooltip />} cursor={{ fill: `${t.buy}08` }} />
+                <Area type="monotone" dataKey="index" stroke={t.buy} fill="url(#idxGrad)" strokeWidth={2.4} dot={false} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+          <div style={{ display: 'flex', gap: 16, fontSize: 10, fontFamily: 'JetBrains Mono, monospace', color: t.textDim, marginTop: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <span><span style={{ color: t.buy }}>━</span> Base-100 equal-weight index</span>
+            <span>Observation-spaced axis keeps all-time points readable</span>
+            <span>Tooltip preserves real TCGPlayer timestamps</span>
+          </div>
+        </section>
+
+        {/* LIVE TAPE */}
+        <section style={{ marginBottom: 24, background: t.bgSecondary, border: `1px solid ${t.border}`, padding: 18 }}>
+          <SectionHeader title="LIVE TAPE" subtitle="Recent fills across major venues" />
+          <div style={{ maxHeight: 340, overflow: 'auto', marginTop: 12 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }}>
+              <thead>
+                <tr style={{ borderBottom: `1px solid ${t.border}`, color: t.textDim }}>
+                  <th style={{ textAlign: 'left', padding: '6px 8px', fontWeight: 500, letterSpacing: 1 }}>TIME</th>
+                  <th style={{ textAlign: 'left', padding: '6px 8px', fontWeight: 500, letterSpacing: 1 }}>SET</th>
+                  <th style={{ textAlign: 'left', padding: '6px 8px', fontWeight: 500, letterSpacing: 1 }}>TYPE</th>
+                  <th style={{ textAlign: 'right', padding: '6px 8px', fontWeight: 500, letterSpacing: 1 }}>PRICE</th>
+                  <th style={{ textAlign: 'right', padding: '6px 8px', fontWeight: 500, letterSpacing: 1 }}>QTY</th>
+                  <th style={{ textAlign: 'left', padding: '6px 8px', fontWeight: 500, letterSpacing: 1 }}>VENUE</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(txns || []).slice(0, 30).map(tx => (
+                  <tr key={tx.id} className="row-hover" style={{ borderBottom: `1px solid ${t.border}` }}>
+                    <td style={{ padding: '7px 8px', color: t.textDim }}>{timeAgo(tx.timestamp)}</td>
+                    <td style={{ padding: '7px 8px', color: t.accent, fontWeight: 600 }}>{tx.set}</td>
+                    <td style={{ padding: '7px 8px' }}>
+                      <span style={{ fontSize: 9, padding: '2px 5px', letterSpacing: 1, fontWeight: 700, color: tx.type === 'SOLD' ? t.buy : tx.type === 'LISTED' ? t.sell : t.warn, background: `${tx.type === 'SOLD' ? t.buy : tx.type === 'LISTED' ? t.sell : t.warn}10` }}>{tx.type}</span>
+                    </td>
+                    <td style={{ padding: '7px 8px', textAlign: 'right', color: t.textBright, fontWeight: 600 }}>{fmt$(tx.price)}</td>
+                    <td style={{ padding: '7px 8px', textAlign: 'right', color: t.text }}>{tx.qty}</td>
+                    <td style={{ padding: '7px 8px', color: t.textDim }}>{tx.venue}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </section>
 
