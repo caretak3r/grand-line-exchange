@@ -7,7 +7,7 @@ import {
   TrendingUp, TrendingDown, Activity, Star, AlertCircle, Anchor,
   ChevronUp, ChevronDown, Search, Target, DollarSign, Package, RefreshCw,
 } from 'lucide-react';
-import { SET_METADATA } from './data/sets.js';
+import SET_METADATA from './data/sets.json';
 
 // ─── STYLE TOKENS ──────────────────────────────────────────────────────────
 const t = {

@@ -18,7 +18,6 @@ Env vars (all optional):
 
 import json
 import os
-import re
 import subprocess
 import sys
 import time
@@ -34,7 +33,7 @@ DATA_DIR = ROOT / 'public' / 'data'
 MARKET = DATA_DIR / 'market.json'
 HISTORY = DATA_DIR / 'history.json'
 TXNS = DATA_DIR / 'transactions.json'
-SETS_JS = ROOT / 'src' / 'data' / 'sets.js'
+SETS_JSON = ROOT / 'src' / 'data' / 'sets.json'
 
 DRY_RUN = os.environ.get('DRY_RUN') == '1'
 INITIAL_SCRAPE = os.environ.get('INITIAL_SCRAPE') == '1'
@@ -42,30 +41,24 @@ EBAY_APP_ID = os.environ.get('EBAY_APP_ID')
 TCGPLAYER_BEARER = os.environ.get('TCGPLAYER_BEARER')
 TCGPLAYER_MPFEV = '5106'
 
-# ─── PARSE SET METADATA FROM sets.js ───────────────────────────────────────
+# ─── LOAD SET METADATA FROM sets.json ──────────────────────────────────────
 def load_sets():
-    """Parse the sets.js file to extract tracked product metadata."""
-    text = SETS_JS.read_text()
-    sets = []
-    # Match each {...} block inside SET_METADATA
-    for m in re.finditer(r"\{([^}]+)\}", text, re.DOTALL):
-        block = m.group(1)
-        def find(key):
-            mm = re.search(rf"{key}:\s*['\"]?([^,'\"\n]+)['\"]?", block)
-            return mm.group(1).strip() if mm else None
-        code = find('code')
-        pid = find('tcgProductId')
-        msrp = find('msrp')
-        status = find('status')
-        released = find('released')
-        if code and pid:
-            sets.append({
-                'code': code,
-                'tcgProductId': pid,
-                'msrp': int(msrp) if msrp and msrp.isdigit() else 144,
-                'status': status or 'active',
-                'released': released,
-            })
+    """Load tracked product metadata; fail loudly on any malformed entry."""
+    sets = json.loads(SETS_JSON.read_text())
+    if not isinstance(sets, list) or not sets:
+        raise RuntimeError(f'{SETS_JSON} must be a non-empty JSON array')
+    seen = set()
+    for s in sets:
+        for key in ('code', 'name', 'released', 'msrp', 'status', 'tcgProductId'):
+            if key not in s:
+                raise RuntimeError(f'sets.json entry missing {key!r}: {s}')
+        if not isinstance(s['msrp'], int):
+            raise RuntimeError(f"sets.json msrp must be an integer for {s['code']}")
+        if not isinstance(s['tcgProductId'], str) or not s['tcgProductId'].isdigit():
+            raise RuntimeError(f"sets.json tcgProductId must be a numeric string for {s['code']}")
+        if s['code'] in seen:
+            raise RuntimeError(f"Duplicate set code in sets.json: {s['code']}")
+        seen.add(s['code'])
     return sets
 
 # ─── TCGPLAYER FETCHING ────────────────────────────────────────────────────

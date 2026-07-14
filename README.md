@@ -104,7 +104,7 @@ DRY_RUN=1 python scripts/update-prices.py  # preview without writing
 │   └── update-prices.py    # The scraper. Runs in Actions or locally.
 ├── src/
 │   ├── Dashboard.jsx       # Main React component
-│   ├── data/sets.js        # Set metadata (codes, MSRPs, TCG product IDs)
+│   ├── data/sets.json      # Set metadata (codes, MSRPs, TCG product IDs)
 │   └── main.jsx            # Entry point
 ├── index.html
 ├── package.json
@@ -131,7 +131,7 @@ GitHub Actions has a 5-minute minimum schedule and frequent cron jobs may be del
 
 ### Add a new set
 
-1. Append a new entry to `src/data/sets.js` with the TCGPlayer product ID (the number in the product URL).
+1. Append a new entry to `src/data/sets.json` with the TCGPlayer product ID (the number in the product URL). Entries must be valid JSON: double-quoted keys/strings, no trailing commas.
 2. Run `python scripts/update-prices.py` locally once to populate the new set.
 3. Commit and push.
 
