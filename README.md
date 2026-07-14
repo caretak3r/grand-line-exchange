@@ -11,7 +11,7 @@ A real-time trading dashboard for One Piece TCG sealed booster boxes — Bloombe
 - **22 tracked sets** — every single English booster box, no clutter from starter decks or premium sets that aren't single boxes
 - **Auto-updating prices** — GitHub Actions runs the scraper hourly and commits fresh data
 - **Real RSI + 30d momentum** computed from actual price history, not heuristics
-- **Live tape** of recent listings/sales across TCGPlayer, eBay, Cardmarket
+- **Live tape** of recent sales from TCGPlayer
 - **Buy/sell signals** generated from momentum + 52-week range position
 - **Persistent watchlist** via localStorage
 - **Free hosting** on GitHub Pages — no servers, no databases, no API keys required to start
@@ -64,7 +64,6 @@ DRY_RUN=1 python scripts/update-prices.py  # preview without writing
 │   scripts/update-prices.py                                       │
 │      │                                                           │
 │      ├─→ query TCGPlayer mp-search-api JSON endpoints per product│
-│      ├─→ (optional) eBay Browse API for sold comps              │
 │      ├─→ compute RSI, 30d Δ, signals, range positions           │
 │      │                                                           │
 │      ↓                                                           │
@@ -135,13 +134,6 @@ GitHub Actions has a 5-minute minimum schedule and frequent cron jobs may be del
 1. Append a new entry to `src/data/sets.json` with the TCGPlayer product ID (the number in the product URL). Entries must be valid JSON: double-quoted keys/strings, no trailing commas.
 2. Run `python scripts/update-prices.py` locally once to populate the new set.
 3. Commit and push.
-
-### Enable real eBay sold-comp data
-
-1. Get an eBay developer App ID at <https://developer.ebay.com>.
-2. In the repo: **Settings → Secrets and variables → Actions → New repository secret**.
-3. Name: `EBAY_APP_ID`, value: your App ID.
-4. The next scraper run will blend eBay sold averages with TCGPlayer prices.
 
 ### Tune the buy/sell signal logic
 

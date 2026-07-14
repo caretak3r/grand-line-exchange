@@ -764,7 +764,7 @@ export default function Dashboard() {
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
             <AlertCircle size={14} style={{ color: t.warn, flexShrink: 0, marginTop: 2 }} />
             <div>
-              <strong style={{ color: t.warn }}>DATA NOTE:</strong> Prices auto-updated by GitHub Actions hourly from TCGPlayer (and eBay sold comps if EBAY_APP_ID secret is configured). Last refresh: <strong style={{ color: t.text }}>{new Date(market.updatedAt).toLocaleString()}</strong>. Volume figures are 30-day estimates. Always verify the live TCGPlayer/eBay quote before placing a trade — sealed TCG product is illiquid and prices can move sharply on reprint announcements. Not financial advice.
+              <strong style={{ color: t.warn }}>DATA NOTE:</strong> Prices auto-updated by GitHub Actions hourly from TCGPlayer. Last refresh: <strong style={{ color: t.text }}>{new Date(market.updatedAt).toLocaleString()}</strong>. Volume figures are 30-day estimates. Always verify the live TCGPlayer/eBay quote before placing a trade — sealed TCG product is illiquid and prices can move sharply on reprint announcements. Not financial advice.
             </div>
           </div>
         </section>

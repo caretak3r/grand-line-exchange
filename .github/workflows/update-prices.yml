@@ -34,7 +34,6 @@ jobs:
 
       - name: Run price scraper
         env:
-          EBAY_APP_ID: ${{ secrets.EBAY_APP_ID }}
           TCGPLAYER_BEARER: ${{ secrets.TCGPLAYER_BEARER }}
           DRY_RUN: ${{ github.event.inputs.dry_run == 'true' && '1' || '0' }}
         run: python scripts/update-prices.py

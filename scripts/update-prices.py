@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
 """
-update-prices.py — Fetches live booster box prices from TCGPlayer (and optionally eBay),
+update-prices.py — Fetches live booster box prices from TCGPlayer,
 updates public/data/market.json + history.json + transactions.json, and writes a summary.
 
 Designed to run from GitHub Actions on a schedule. Resilient by design:
   - If a fetch fails for any individual set, it keeps the previous value.
   - If the entire run fails, the existing JSON is left untouched.
-  - If the optional EBAY_APP_ID secret is set, eBay sold-comp data is folded in.
 
 Usage:  python scripts/update-prices.py
 Env vars (all optional):
-  EBAY_APP_ID       — eBay Browse API app ID for real sold-comp data
   TCGPLAYER_BEARER  — TCGPlayer API bearer if you have partner access; otherwise public scrape
   DRY_RUN=1         — print but don't write
   INITIAL_SCRAPE=1  — rebuild public/data from live TCGPlayer market/listing/sales endpoints
@@ -39,7 +37,6 @@ RETENTION_DAYS = 365
 
 DRY_RUN = os.environ.get('DRY_RUN') == '1'
 INITIAL_SCRAPE = os.environ.get('INITIAL_SCRAPE') == '1'
-EBAY_APP_ID = os.environ.get('EBAY_APP_ID')
 TCGPLAYER_BEARER = os.environ.get('TCGPLAYER_BEARER')
 TCGPLAYER_MPFEV = '5106'
 
@@ -205,43 +202,6 @@ def fetch_tcgplayer_latest_sales(product_id, product_name=''):
         return sales
     except (subprocess.CalledProcessError, URLError, HTTPError, TimeoutError, json.JSONDecodeError) as e:
         print(f'  latest sales fetch failed for {product_id}: {e}')
-        return None
-
-
-# ─── EBAY SOLD COMPS (OPTIONAL) ────────────────────────────────────────────
-def fetch_ebay_sold(query, app_id):
-    """If EBAY_APP_ID is set, fetch recent sold listings via Browse API. Returns count + avg."""
-    if not app_id:
-        return None
-    # eBay Finding API — completed listings endpoint (deprecated but still works for sold comps)
-    url = (
-        'https://svcs.ebay.com/services/search/FindingService/v1'
-        f'?OPERATION-NAME=findCompletedItems&SERVICE-VERSION=1.13.0'
-        f'&SECURITY-APPNAME={app_id}&RESPONSE-DATA-FORMAT=JSON'
-        f'&keywords={query.replace(" ", "%20")}'
-        '&itemFilter(0).name=SoldItemsOnly&itemFilter(0).value=true'
-        '&paginationInput.entriesPerPage=20&sortOrder=EndTimeSoonest'
-    )
-    try:
-        data = json.loads(http_get(url))
-        items = data.get('findCompletedItemsResponse', [{}])[0].get('searchResult', [{}])[0].get('item', [])
-        prices = []
-        for it in items:
-            try:
-                p = float(it['sellingStatus'][0]['currentPrice'][0]['__value__'])
-                prices.append(p)
-            except (KeyError, ValueError, IndexError):
-                continue
-        if not prices:
-            return None
-        return {
-            'sold_count': len(prices),
-            'avg_sold': round(sum(prices) / len(prices), 2),
-            'min_sold': min(prices),
-            'max_sold': max(prices),
-        }
-    except Exception as e:
-        print(f'  eBay fetch failed: {e}')
         return None
 
 
@@ -543,7 +503,7 @@ def main():
 
     today = now.strftime('%Y-%m-%dT%H:%MZ')
     new_quotes = {}
-    fetched, kept, ebay_updates = 0, 0, 0
+    fetched, kept = 0, 0
     new_txns = []
 
     for s in sets:
@@ -570,14 +530,6 @@ def main():
             listings = prev_quote.get('listings', 0)
             kept += 1
             print(f'  · {code}: kept ${price} (no fresh data)')
-
-        # Optional eBay enrichment
-        if EBAY_APP_ID and price > 0:
-            ebay = fetch_ebay_sold(f'one piece {code} booster box english sealed', EBAY_APP_ID)
-            if ebay:
-                price = round((price + ebay['avg_sold']) / 2, 2)  # blend
-                ebay_updates += 1
-                print(f'    eBay blend: avg ${ebay["avg_sold"]} over {ebay["sold_count"]} sales')
 
         hist = build_verified_history(
             history.get(code, []),
@@ -641,7 +593,7 @@ def main():
 
     existing_positive = count_positive_quotes(market.get('quotes', {}))
     new_positive = count_positive_quotes(new_quotes)
-    live_updates = fetched + ebay_updates
+    live_updates = fetched
 
     if live_updates == 0:
         if existing_positive and new_positive:
@@ -660,13 +612,13 @@ def main():
 
     out_market = {
         'updatedAt': datetime.now(timezone.utc).isoformat(),
-        'source': 'tcgplayer initial scrape' if INITIAL_SCRAPE else 'tcgplayer' + (' + ebay' if EBAY_APP_ID else ''),
+        'source': 'tcgplayer initial scrape' if INITIAL_SCRAPE else 'tcgplayer',
         'fetched': fetched,
         'kept': kept,
         'quotes': new_quotes,
     }
 
-    print(f'\n→ {fetched} fetched, {ebay_updates} eBay-enriched, {kept} kept from cache, {len(new_txns)} new sales added.')
+    print(f'\n→ {fetched} fetched, {kept} kept from cache, {len(new_txns)} new sales added.')
 
     if DRY_RUN:
         print('DRY_RUN=1 — not writing files.')
