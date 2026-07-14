@@ -34,6 +34,8 @@ MARKET = DATA_DIR / 'market.json'
 HISTORY = DATA_DIR / 'history.json'
 TXNS = DATA_DIR / 'transactions.json'
 SETS_JSON = ROOT / 'src' / 'data' / 'sets.json'
+ARCHIVE = DATA_DIR / 'history-archive.json'
+RETENTION_DAYS = 365
 
 DRY_RUN = os.environ.get('DRY_RUN') == '1'
 INITIAL_SCRAPE = os.environ.get('INITIAL_SCRAPE') == '1'
@@ -340,6 +342,39 @@ def merge_history_points(*groups):
     return sorted(merged.values(), key=history_sort_key)
 
 
+def prune_history(rows, now):
+    """Split sorted history rows into (kept, archived). Months fully older
+    than RETENTION_DAYS keep one spine row (their last positive-price row)
+    and their release anchors; everything else in them is archived."""
+    cutoff = now - timedelta(days=RETENTION_DAYS)
+    by_month = {}
+    for row in rows or []:
+        parsed = parse_datetime(row.get('date'))
+        key = parsed.strftime('%Y-%m') if parsed else None
+        by_month.setdefault(key, []).append(row)
+    kept, archived = [], []
+    for key, group in by_month.items():
+        if key is None:
+            kept.extend(group)
+            continue
+        year, month = int(key[:4]), int(key[5:7])
+        month_end = datetime(year + (month == 12), month % 12 + 1, 1, tzinfo=timezone.utc)
+        if month_end >= cutoff:
+            kept.extend(group)
+            continue
+        spine = None
+        for row in group:  # rows arrive sorted, so the last hit is the latest
+            price = money(row.get('price'))
+            if price and price > 0:
+                spine = row
+        for row in group:
+            if row is spine or row.get('source') == 'release date':
+                kept.append(row)
+            else:
+                archived.append(row)
+    return sorted(kept, key=history_sort_key), archived
+
+
 def release_anchor(release_date):
     return {
         'date': release_date,
@@ -365,8 +400,8 @@ def current_market_point(price, today):
 def sales_history_points(sales):
     points = []
     for sale in sales or []:
-        order_date = sale.get('orderDate') or ''
-        label = order_date[:16].replace('T', ' ') if len(order_date) >= 16 else sale_date(sale)
+        parsed = parse_datetime(sale.get('orderDate'))
+        label = parsed.strftime('%Y-%m-%dT%H:%MZ') if parsed else sale_date(sale)
         price = sale_total(sale)
         if not label or price <= 0:
             continue
@@ -492,10 +527,12 @@ def main():
     market = json.loads(MARKET.read_text()) if MARKET.exists() else {'quotes': {}}
     history = json.loads(HISTORY.read_text()) if HISTORY.exists() else {}
     txns = json.loads(TXNS.read_text()) if TXNS.exists() else []
+    archive = json.loads(ARCHIVE.read_text()) if ARCHIVE.exists() else {}
     sets = load_sets()
     if INITIAL_SCRAPE:
         history = {}
         txns = []
+        archive = {}
     else:
         txns = compact_transactions(txns)
     interval_start = None if INITIAL_SCRAPE else parse_datetime(market.get('updatedAt'))
@@ -504,7 +541,7 @@ def main():
     if interval_start:
         print(f'Only adding TCGPlayer sales after previous run: {interval_start.isoformat()}')
 
-    today = now.strftime('%Y-%m-%d %H:%M')
+    today = now.strftime('%Y-%m-%dT%H:%MZ')
     new_quotes = {}
     fetched, kept, ebay_updates = 0, 0, 0
     new_txns = []
@@ -551,6 +588,10 @@ def main():
             reset=INITIAL_SCRAPE,
         )
         history[code] = hist
+        hist, archived_rows = prune_history(hist, now)
+        history[code] = hist
+        if archived_rows:
+            archive[code] = merge_history_points(archive.get(code, []), archived_rows)
 
         # Compute window metrics
         prices = [money(h.get('price')) for h in hist if money(h.get('price')) > 0]
@@ -634,6 +675,7 @@ def main():
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     MARKET.write_text(json.dumps(out_market, indent=2) + '\n')
     HISTORY.write_text(json.dumps(history, indent=2) + '\n')
+    ARCHIVE.write_text(json.dumps(archive, indent=2) + '\n')
     TXNS.write_text(json.dumps(txns, indent=2) + '\n')
     print(f'✓ Wrote {MARKET.relative_to(ROOT)}, {HISTORY.relative_to(ROOT)}, {TXNS.relative_to(ROOT)}')
 

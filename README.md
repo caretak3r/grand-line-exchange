@@ -8,8 +8,8 @@ A real-time trading dashboard for One Piece TCG sealed booster boxes — Bloombe
 
 ## ✨ Features
 
-- **20 tracked sets** — every single English booster box, no clutter from starter decks or premium sets that aren't single boxes
-- **Auto-updating prices** — GitHub Actions runs the scraper every 6 hours and commits fresh data
+- **22 tracked sets** — every single English booster box, no clutter from starter decks or premium sets that aren't single boxes
+- **Auto-updating prices** — GitHub Actions runs the scraper hourly and commits fresh data
 - **Real RSI + 30d momentum** computed from actual price history, not heuristics
 - **Live tape** of recent listings/sales across TCGPlayer, eBay, Cardmarket
 - **Buy/sell signals** generated from momentum + 52-week range position
@@ -42,7 +42,7 @@ npm run dev
 
 ### Enable scheduled price updates
 
-The `Update Prices` workflow runs every 6 hours by default. To trigger it manually:
+The `Update Prices` workflow runs hourly by default. To trigger it manually:
 
 - Go to the **Actions** tab → **Update Prices** → **Run workflow**.
 
@@ -59,17 +59,17 @@ DRY_RUN=1 python scripts/update-prices.py  # preview without writing
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    GitHub Actions (every 6h)                     │
+│                    GitHub Actions (hourly)                       │
 │                                                                  │
 │   scripts/update-prices.py                                       │
 │      │                                                           │
-│      ├─→ scrape TCGPlayer JSON-LD per product                   │
+│      ├─→ query TCGPlayer mp-search-api JSON endpoints per product│
 │      ├─→ (optional) eBay Browse API for sold comps              │
 │      ├─→ compute RSI, 30d Δ, signals, range positions           │
 │      │                                                           │
 │      ↓                                                           │
 │   public/data/market.json     ← latest quote snapshot            │
-│   public/data/history.json    ← rolling 365 days per set         │
+│   public/data/history.json    ← last 365d + monthly spine per set│
 │   public/data/transactions.json ← live tape feed                 │
 │      │                                                           │
 │      ↓                                                           │
@@ -95,10 +95,11 @@ DRY_RUN=1 python scripts/update-prices.py  # preview without writing
 .
 ├── .github/workflows/
 │   ├── deploy.yml          # Builds + deploys to GitHub Pages
-│   └── update-prices.yml   # Cron: scrapes prices every 6h
+│   └── update-prices.yml   # Cron: scrapes prices hourly
 ├── public/data/
 │   ├── market.json         # Latest quote snapshot (overwritten)
-│   ├── history.json        # 365d price history per set (appended)
+│   ├── history.json        # last 365d + monthly spine per set; older rows in history-archive.json
+│   ├── history-archive.json # rows aged out of the 365d window (not fetched by the app)
 │   └── transactions.json   # Live tape, last 100 events (rolling)
 ├── scripts/
 │   └── update-prices.py    # The scraper. Runs in Actions or locally.
@@ -122,8 +123,8 @@ Edit `.github/workflows/update-prices.yml`:
 ```yaml
 on:
   schedule:
-    - cron: '15 */6 * * *'   # every 6 hours
-    # - cron: '0 */1 * * *'  # every hour
+    - cron: '15 * * * *'     # hourly
+    # - cron: '15 */6 * * *' # every six hours
     # - cron: '0 9 * * *'    # daily at 09:00 UTC
 ```
 
@@ -161,13 +162,13 @@ Edit `compute_signal()` in `scripts/update-prices.py`. Defaults:
 - **Not financial advice.** Sealed TCG product is illiquid; prices can move sharply on reprint announcements.
 - **TCGPlayer scraping is best-effort.** If their HTML structure changes, the scraper may need an update. The dashboard is designed to gracefully fall back to cached prices if a fetch fails.
 - **Always verify the live quote** on TCGPlayer/eBay before placing a trade. Each set has a "View on TCGPlayer ↗" link in the detail panel.
-- **GitHub Actions free tier** gives 2,000 minutes/month for private repos and unlimited for public repos. The scraper runs in ~1 minute per execution, so 4 runs/day = ~120 minutes/month — well within limits.
+- **GitHub Actions free tier** gives 2,000 minutes/month for private repos and unlimited for public repos. The scraper runs in ~1 minute per execution, so 24 runs/day = ~720 minutes/month (public repos get unlimited Actions minutes).
 
 ---
 
 ## 🧰 Tech Stack
 
-- **React 18** + **Vite** — fast dev/build
+- **React 19** + **Vite** — fast dev/build
 - **Recharts** — price + volume charting
 - **Lucide** — icons
 - **Python 3.11** — scraper (zero dependencies, stdlib only)

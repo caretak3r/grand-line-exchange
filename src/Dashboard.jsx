@@ -63,10 +63,11 @@ function useMarketData() {
     try {
       // Vite injects the correct base path; data lives in /public/data/
       const base = import.meta.env.BASE_URL;
-      const [m, h, x] = await Promise.all([
-        fetch(`${base}data/market.json?t=${Date.now()}`).then(r => r.json()),
-        fetch(`${base}data/history.json?t=${Date.now()}`).then(r => r.json()),
-        fetch(`${base}data/transactions.json?t=${Date.now()}`).then(r => r.json()),
+      const m = await fetch(`${base}data/market.json`, { cache: 'no-store' }).then(r => r.json());
+      const v = encodeURIComponent(m.updatedAt || Date.now());
+      const [h, x] = await Promise.all([
+        fetch(`${base}data/history.json?v=${v}`).then(r => r.json()),
+        fetch(`${base}data/transactions.json?v=${v}`).then(r => r.json()),
       ]);
       setData({ loading: false, error: null, market: m, history: h, txns: x });
     } catch (e) {

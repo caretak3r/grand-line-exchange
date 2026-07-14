@@ -79,7 +79,7 @@ jobs:
         run: |
           git config user.name  "grand-line-bot"
           git config user.email "grand-line-bot@users.noreply.github.com"
-          git add public/data/market.json public/data/history.json public/data/transactions.json
+          git add public/data/market.json public/data/history.json public/data/history-archive.json public/data/transactions.json
           if git diff --staged --quiet; then
             echo "No price changes to commit."
           else
