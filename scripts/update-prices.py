@@ -588,7 +588,9 @@ def main():
             'rsi': compute_rsi(prices),
             'momentum': 'bullish' if change30d > 4 else 'bearish' if change30d < -3 else 'neutral',
             'signal': compute_signal(price, change30d, high52w, low52w, s['status']),
-            'lastUpdated': datetime.now(timezone.utc).isoformat(),
+            'stale': not has_live_price,
+            'lastUpdated': (datetime.now(timezone.utc).isoformat() if has_live_price
+                            else prev_quote.get('lastUpdated') or datetime.now(timezone.utc).isoformat()),
         }
 
     existing_positive = count_positive_quotes(market.get('quotes', {}))

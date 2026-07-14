@@ -257,7 +257,7 @@ export default function Dashboard() {
     if (!market) return [];
     return SET_METADATA.map(meta => ({
       ...meta,
-      ...(market.quotes[meta.code] || { price: 0, change30d: 0, high52w: 0, low52w: 0, volume30d: 0, listings: 0, soldLast7d: 0, bid: 0, ask: 0, spread: 0, rsi: 50, momentum: 'neutral', signal: 'HOLD' }),
+      ...(market.quotes[meta.code] || { price: 0, change30d: 0, high52w: 0, low52w: 0, volume30d: 0, listings: 0, soldLast7d: 0, bid: 0, ask: 0, spread: 0, rsi: 50, momentum: 'neutral', signal: 'HOLD', stale: true }),
     }));
   }, [market]);
 
@@ -624,6 +624,7 @@ export default function Dashboard() {
                           <TierBadge tier={s.tier} />
                           {s.status === 'rotated' && <span style={{ fontSize: 9, color: t.textDim, padding: '2px 5px', background: t.bgTertiary }}>ROTATED</span>}
                           {s.status === 'preorder' && <span style={{ fontSize: 9, color: t.info, padding: '2px 5px', background: `${t.info}10` }}>PREORDER</span>}
+                          {s.stale && s.price > 0 && <span style={{ fontSize: 9, color: t.warn, padding: '2px 5px', background: `${t.warn}10` }}>CACHED</span>}
                         </div>
                       </td>
                       <td style={{ padding: '10px 8px', textAlign: 'right', color: t.textBright, fontWeight: 600, fontSize: 13 }}>{fmt$(s.price)}</td>
