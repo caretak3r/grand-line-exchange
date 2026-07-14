@@ -120,10 +120,11 @@ def request_json(url, body=None, timeout=15, product_id=None, curl_fallback=Fals
 
 
 def money(value):
+    """Parse a numeric field; None when absent or malformed (never 0.0)."""
     try:
         return float(value)
     except (TypeError, ValueError):
-        return 0.0
+        return None
 
 
 def fetch_tcgplayer_price(product_id):
@@ -147,9 +148,9 @@ def fetch_tcgplayer_price(product_id):
         return None
     return {
         'marketPrice': market_price,
-        'lowPrice': low_price,
-        'lowestPriceWithShipping': low_with_shipping,
-        'listings': int(money(data.get('sellers'))),
+        'lowPrice': low_price or 0.0,
+        'lowestPriceWithShipping': low_with_shipping or 0.0,
+        'listings': int(money(data.get('sellers')) or 0),
         'productName': data.get('productName', ''),
         'sku': (data.get('skus') or [{}])[0].get('sku'),
     }
@@ -180,7 +181,7 @@ def fetch_tcgplayer_listings(product_id, size=3):
         return {'totalResults': 0, 'listings': []}
     result = (data.get('results') or [{}])[0]
     return {
-        'totalResults': int(money(result.get('totalResults'))),
+        'totalResults': int(money(result.get('totalResults')) or 0),
         'listings': result.get('results') or [],
     }
 
@@ -245,7 +246,10 @@ def count_positive_quotes(quotes):
 
 
 def sale_total(sale):
-    return money(sale.get('purchasePrice')) + money(sale.get('shippingPrice'))
+    price = money(sale.get('purchasePrice'))
+    if price is None:
+        return None
+    return price + (money(sale.get('shippingPrice')) or 0.0)
 
 
 def sale_quantity(sale):
@@ -363,7 +367,7 @@ def sales_history_points(sales):
         parsed = parse_datetime(sale.get('orderDate'))
         label = parsed.strftime('%Y-%m-%dT%H:%MZ') if parsed else sale_date(sale)
         price = sale_total(sale)
-        if not label or price <= 0:
+        if not label or not price or price <= 0:
             continue
         points.append({
             'date': label,
@@ -390,7 +394,7 @@ def history_prices_since(rows, days, now):
     for row in rows or []:
         price = money(row.get('price'))
         parsed = parse_datetime(row.get('date'))
-        if price > 0 and parsed and parsed >= cutoff:
+        if price and price > 0 and parsed and parsed >= cutoff:
             prices.append(price)
     return prices
 
@@ -400,7 +404,7 @@ def price_at_or_before(rows, cutoff):
     for row in rows or []:
         price = money(row.get('price'))
         parsed = parse_datetime(row.get('date'))
-        if price > 0 and parsed and parsed <= cutoff:
+        if price and price > 0 and parsed and parsed <= cutoff:
             candidates.append((parsed, price))
     if not candidates:
         return None
@@ -415,7 +419,7 @@ def history_sales_volume_since(rows, days, now):
             continue
         parsed = parse_datetime(row.get('date'))
         if parsed and parsed >= cutoff:
-            total += max(0, int(money(row.get('volume'))))
+            total += max(0, int(money(row.get('volume')) or 0))
     return total
 
 
@@ -438,7 +442,7 @@ def sale_transactions_for_interval(code, sales, interval_start, existing_ids):
         if interval_start and (not sold_at or sold_at <= interval_start):
             continue
         total = sale_total(sale)
-        if total <= 0:
+        if not total or total <= 0:
             continue
         txn_id = sale_transaction_id(code, sale, idx)
         if txn_id in existing_ids:
@@ -546,7 +550,7 @@ def main():
             archive[code] = merge_history_points(archive.get(code, []), archived_rows)
 
         # Compute window metrics
-        prices = [money(h.get('price')) for h in hist if money(h.get('price')) > 0]
+        prices = [p for p in (money(h.get('price')) for h in hist) if p and p > 0]
         if not prices:
             continue
         prices_52w = history_prices_since(hist, 365, now) or prices
