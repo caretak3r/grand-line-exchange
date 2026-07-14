@@ -241,6 +241,33 @@ def compute_rsi(prices):
     return round(100 - (100 / (1 + rs)))
 
 
+def daily_closes(rows):
+    """Per UTC day: the day's last market-snapshot price, else the median of
+    that day's sale prices. Returns closes in day order (RSI input)."""
+    days = {}
+    for row in rows or []:
+        price = money(row.get('price'))
+        parsed = parse_datetime(row.get('date'))
+        if not price or price <= 0 or not parsed:
+            continue
+        day = parsed.strftime('%Y-%m-%d')
+        entry = days.setdefault(day, {'market': None, 'sales': []})
+        if row.get('source') == 'tcgplayer current market':
+            entry['market'] = price
+        else:
+            entry['sales'].append(price)
+    closes = []
+    for day in sorted(days):
+        entry = days[day]
+        if entry['market'] is not None:
+            closes.append(entry['market'])
+        else:
+            sales = sorted(entry['sales'])
+            mid = len(sales) // 2
+            closes.append(sales[mid] if len(sales) % 2 else (sales[mid - 1] + sales[mid]) / 2)
+    return closes
+
+
 def count_positive_quotes(quotes):
     return sum(1 for q in quotes.values() if q.get('price', 0) > 0)
 
@@ -589,7 +616,7 @@ def main():
             'bid': bid,
             'ask': ask,
             'spread': spread,
-            'rsi': compute_rsi(prices),
+            'rsi': compute_rsi(daily_closes(hist)),
             'momentum': 'bullish' if change30d > 4 else 'bearish' if change30d < -3 else 'neutral',
             'signal': compute_signal(price, change30d, high52w, low52w, s['status']),
             'stale': not has_live_price,

@@ -282,24 +282,39 @@ export default function Dashboard() {
   const selected = sets.find(s => s.code === selectedSet) || sets[0];
   const selectedHistory = selected ? (history?.[selected.code] || []) : [];
 
-  // Add moving averages on the fly
+  // MAs use daily closes: per UTC day, the last market snapshot's price if
+  // present, else the median of that day's sales. Rows stay per-observation
+  // for the price line, volume bars, and tooltips.
   const chartData = useMemo(() => {
     if (!selectedHistory.length) return [];
-    return selectedHistory
+    const rows = selectedHistory
       .map(row => ({ ...row, ts: parseChartTime(row.date) }))
       .filter(row => row.ts && row.price > 0)
-      .sort((a, b) => a.ts - b.ts)
-      .map((row, i, rows) => {
-        const priced = rows.slice(0, i + 1).filter(p => p.price > 0);
-        const w7 = priced.slice(-7);
-        const w30 = priced.slice(-30);
-        return {
-          ...row,
-          axis: i,
-          ma7: w7.length ? Math.round(w7.reduce((s, p) => s + p.price, 0) / w7.length * 100) / 100 : null,
-          ma30: w30.length ? Math.round(w30.reduce((s, p) => s + p.price, 0) / w30.length * 100) / 100 : null,
-        };
-      });
+      .sort((a, b) => a.ts - b.ts);
+    const byDay = new Map();
+    for (const row of rows) {
+      const day = new Date(row.ts).toISOString().slice(0, 10);
+      const entry = byDay.get(day) || { market: null, sales: [] };
+      if (row.source === 'tcgplayer current market') entry.market = row.price;
+      else entry.sales.push(row.price);
+      byDay.set(day, entry);
+    }
+    const closes = [...byDay.entries()].map(([day, e]) => {
+      if (e.market != null) return { day, close: e.market };
+      const s = [...e.sales].sort((a, b) => a - b);
+      const mid = Math.floor(s.length / 2);
+      return { day, close: s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2 };
+    });
+    const maOver = (day, windowDays) => {
+      const end = Date.parse(day);
+      const start = end - (windowDays - 1) * 86400000;
+      const w = closes.filter(c => { const t = Date.parse(c.day); return t >= start && t <= end; });
+      return w.length ? Math.round(w.reduce((s, c) => s + c.close, 0) / w.length * 100) / 100 : null;
+    };
+    return rows.map((row, i) => {
+      const day = new Date(row.ts).toISOString().slice(0, 10);
+      return { ...row, axis: i, ma7: maOver(day, 7), ma30: maOver(day, 30) };
+    });
   }, [selectedHistory]);
   const selectedFirst = chartData[0];
   const selectedLast = chartData[chartData.length - 1];
