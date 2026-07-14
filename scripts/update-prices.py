@@ -66,16 +66,6 @@ USER_AGENT = (
     '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
 )
 
-def http_get(url, timeout=15):
-    req = Request(url, headers={
-        'User-Agent': USER_AGENT,
-        'Accept': 'text/html,application/xhtml+xml,application/json,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9',
-    })
-    with urlopen(req, timeout=timeout) as r:
-        return r.read().decode('utf-8', errors='replace')
-
-
 def tcgplayer_headers(product_id=None):
     headers = {
         'User-Agent': USER_AGENT,
