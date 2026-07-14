@@ -21,7 +21,7 @@ that churn is expected, never drift.
 | 002  | UTC-explicit timestamps + 365d retention (one migration commit) | P1 | M | 001 recommended first | DONE (commit `b66cb4d` stacked on 001's branch, approved 2026-07-13, unmerged; migration proven pure-reformat over 9,058 rows) |
 | 003  | Per-quote staleness, eBay path removal, money() → None | P2 | M | after 002 (ordering only) | DONE (commits `461a6e4`+`8004a69`+`da8b767`, approved 2026-07-13, unmerged; plan's money()-census was off by one — executor reconciliation accepted; follow-up: `http_get()` now dead code; operator must delete EBAY_APP_ID GitHub secret) |
 | 004  | Daily-bucketed MA7/MA30 and RSI | P2 | M | 002 (hard) | DONE (branch `feat/uplift-analytics`, 2026-07-13; Step 3's network dry run skipped — no network in the executor's environment, the Step 2 importlib fixture is the plan's stated substitute) |
-| 005  | Extract src/lib/analytics.js + ownership rule in README | P3 | M | 004 (hard); benefits from 001 | TODO |
+| 005  | Extract src/lib/analytics.js + ownership rule in README | P3 | M | 004 (hard); benefits from 001 | DONE (branch `feat/uplift-analytics`, 2026-07-13; pure movement — no computed value changed; vitest still deferred per the plan) |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale — finding fixed independently or approach abandoned)
 

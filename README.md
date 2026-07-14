@@ -86,6 +86,13 @@ DRY_RUN=1 python scripts/update-prices.py  # preview without writing
 
 **Key idea:** the dashboard is a pure static site that reads JSON committed by a scheduled workflow. There is no backend. The repo itself is the database.
 
+**Analytics ownership:** every value persisted in `public/data/market.json`
+(price, RSI, signals, 52-week ranges, volumes) is computed once by
+`scripts/update-prices.py` at ingest. Every value derived in the browser for
+display (moving averages, the Grand Line Index, market-pulse aggregates) is
+computed in `src/lib/analytics.js`. Nothing computes the same number in both
+places — if you need a value in a new place, import it from its owner.
+
 ---
 
 ## 📂 Project Structure
@@ -105,6 +112,7 @@ DRY_RUN=1 python scripts/update-prices.py  # preview without writing
 ├── src/
 │   ├── Dashboard.jsx       # Main React component
 │   ├── data/sets.json      # Set metadata (codes, MSRPs, TCG product IDs)
+│   ├── lib/analytics.js    # Browser-side derived analytics (MAs, index, aggregates)
 │   └── main.jsx            # Entry point
 ├── index.html
 ├── package.json

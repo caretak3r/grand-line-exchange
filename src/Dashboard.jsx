@@ -8,6 +8,7 @@ import {
   ChevronUp, ChevronDown, Search, Target, DollarSign, Package, RefreshCw,
 } from 'lucide-react';
 import SET_METADATA from './data/sets.json';
+import { buildChartData, buildIndexData, computeMarketStats, pctChange } from './lib/analytics.js';
 
 // ─── STYLE TOKENS ──────────────────────────────────────────────────────────
 const t = {
@@ -23,10 +24,6 @@ const t = {
 const fmt$ = (n) => !n ? '—' : `$${Math.round(n).toLocaleString('en-US')}`;
 const fmtPct = (n) => `${n > 0 ? '+' : ''}${n.toFixed(2)}%`;
 const fmtNum = (n) => n.toLocaleString('en-US');
-const parseChartTime = (value) => {
-  const ts = new Date(String(value || '').replace(' ', 'T')).getTime();
-  return Number.isFinite(ts) ? ts : null;
-};
 const fmtChartDate = (ts) => {
   const d = new Date(ts);
   return Number.isFinite(d.getTime()) ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
@@ -40,7 +37,6 @@ const fmtAxisDate = (rows, formatter = fmtShortChartDate) => (value) => {
   return row ? formatter(row.ts) : '—';
 };
 const observationDomain = (rows) => [0, Math.max(1, rows.length - 1)];
-const pctChange = (start, end) => start ? ((end - start) / start) * 100 : 0;
 const fmtIndex = (n) => Number.isFinite(n) ? n.toFixed(1) : '—';
 const timeAgo = (iso) => {
   const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
@@ -282,97 +278,14 @@ export default function Dashboard() {
   const selected = sets.find(s => s.code === selectedSet) || sets[0];
   const selectedHistory = selected ? (history?.[selected.code] || []) : [];
 
-  // MAs use daily closes: per UTC day, the last market snapshot's price if
-  // present, else the median of that day's sales. Rows stay per-observation
-  // for the price line, volume bars, and tooltips.
-  const chartData = useMemo(() => {
-    if (!selectedHistory.length) return [];
-    const rows = selectedHistory
-      .map(row => ({ ...row, ts: parseChartTime(row.date) }))
-      .filter(row => row.ts && row.price > 0)
-      .sort((a, b) => a.ts - b.ts);
-    const byDay = new Map();
-    for (const row of rows) {
-      const day = new Date(row.ts).toISOString().slice(0, 10);
-      const entry = byDay.get(day) || { market: null, sales: [] };
-      if (row.source === 'tcgplayer current market') entry.market = row.price;
-      else entry.sales.push(row.price);
-      byDay.set(day, entry);
-    }
-    const closes = [...byDay.entries()].map(([day, e]) => {
-      if (e.market != null) return { day, close: e.market };
-      const s = [...e.sales].sort((a, b) => a - b);
-      const mid = Math.floor(s.length / 2);
-      return { day, close: s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2 };
-    });
-    const maOver = (day, windowDays) => {
-      const end = Date.parse(day);
-      const start = end - (windowDays - 1) * 86400000;
-      const w = closes.filter(c => { const t = Date.parse(c.day); return t >= start && t <= end; });
-      return w.length ? Math.round(w.reduce((s, c) => s + c.close, 0) / w.length * 100) / 100 : null;
-    };
-    return rows.map((row, i) => {
-      const day = new Date(row.ts).toISOString().slice(0, 10);
-      return { ...row, axis: i, ma7: maOver(day, 7), ma30: maOver(day, 30) };
-    });
-  }, [selectedHistory]);
+  const chartData = useMemo(() => buildChartData(selectedHistory), [selectedHistory]);
   const selectedFirst = chartData[0];
   const selectedLast = chartData[chartData.length - 1];
   const selectedAllTimeChange = selectedFirst && selectedLast ? pctChange(selectedFirst.price, selectedLast.price) : 0;
 
-  const active = sets.filter(s => s.price > 0);
-  const totalCap = active.reduce((sum, s) => sum + s.price * s.volume30d, 0);
-  const totalVol = active.reduce((sum, s) => sum + s.volume30d, 0);
-  const avgChange = active.length ? active.reduce((sum, s) => sum + s.change30d, 0) / active.length : 0;
-  const gainers = active.filter(s => s.change30d > 0).length;
-  const losers = active.filter(s => s.change30d < 0).length;
-  const buys = active.filter(s => s.signal === 'BUY' || s.signal === 'STRONG BUY').length;
-  const topGainers = [...active].sort((a, b) => b.change30d - a.change30d).slice(0, 5);
-  const topLosers = [...active].sort((a, b) => a.change30d - b.change30d).slice(0, 5);
+  const { active, totalCap, totalVol, avgChange, gainers, losers, buys, topGainers, topLosers } = computeMarketStats(sets);
 
-  const indexData = useMemo(() => {
-    if (!history || !sets.length) return [];
-    const trackedCodes = new Set(sets.map(s => s.code));
-    const grouped = new Map();
-    for (const code of trackedCodes) {
-      for (const row of history[code] || []) {
-        const price = Number(row.price);
-        const ts = parseChartTime(row.date);
-        if (!ts || !price || price <= 0) continue;
-        const bucket = grouped.get(ts) || [];
-        bucket.push({ code, price, source: row.source });
-        grouped.set(ts, bucket);
-      }
-    }
-    const latest = new Map();
-    const baselines = new Map();
-    return [...grouped.entries()]
-      .sort(([a], [b]) => a - b)
-      .map(([ts, events], i) => {
-        for (const event of events) {
-          if (!baselines.has(event.code)) baselines.set(event.code, event.price);
-          latest.set(event.code, event.price);
-        }
-        const prices = sets.map(s => latest.get(s.code)).filter(p => p > 0);
-        const normalized = sets
-          .map(s => {
-            const price = latest.get(s.code);
-            const base = baselines.get(s.code);
-            return price && base ? (price / base) * 100 : null;
-          })
-          .filter(p => p > 0);
-        const changed = events.map(e => e.code).join(', ');
-        return {
-          axis: i,
-          ts,
-          index: Math.round(normalized.reduce((sum, p) => sum + p, 0) / normalized.length * 100) / 100,
-          avgPrice: Math.round(prices.reduce((sum, p) => sum + p, 0) / prices.length * 100) / 100,
-          coverage: normalized.length,
-          totalSets: sets.length,
-          changed,
-        };
-      });
-  }, [history, sets]);
+  const indexData = useMemo(() => buildIndexData(history, sets), [history, sets]);
   const indexFirst = indexData[0];
   const indexLast = indexData[indexData.length - 1];
   const indexAllTimeChange = indexFirst && indexLast ? pctChange(indexFirst.index, indexLast.index) : 0;
