@@ -12,6 +12,8 @@ __pycache__
 .venv
 venv
 .uplift/
+.gnhf/
+context-log.md
 
 # Beads / Dolt files (added by bd init)
 .dolt/

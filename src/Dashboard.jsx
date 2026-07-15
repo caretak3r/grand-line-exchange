@@ -7,7 +7,8 @@ import {
   TrendingUp, TrendingDown, Activity, Star, AlertCircle, Anchor,
   ChevronUp, ChevronDown, Search, Target, DollarSign, Package, RefreshCw,
 } from 'lucide-react';
-import { SET_METADATA } from './data/sets.js';
+import SET_METADATA from './data/sets.json';
+import { buildChartData, buildIndexData, computeMarketStats, pctChange } from './lib/analytics.js';
 
 // ─── STYLE TOKENS ──────────────────────────────────────────────────────────
 const t = {
@@ -23,10 +24,6 @@ const t = {
 const fmt$ = (n) => !n ? '—' : `$${Math.round(n).toLocaleString('en-US')}`;
 const fmtPct = (n) => `${n > 0 ? '+' : ''}${n.toFixed(2)}%`;
 const fmtNum = (n) => n.toLocaleString('en-US');
-const parseChartTime = (value) => {
-  const ts = new Date(String(value || '').replace(' ', 'T')).getTime();
-  return Number.isFinite(ts) ? ts : null;
-};
 const fmtChartDate = (ts) => {
   const d = new Date(ts);
   return Number.isFinite(d.getTime()) ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
@@ -40,7 +37,6 @@ const fmtAxisDate = (rows, formatter = fmtShortChartDate) => (value) => {
   return row ? formatter(row.ts) : '—';
 };
 const observationDomain = (rows) => [0, Math.max(1, rows.length - 1)];
-const pctChange = (start, end) => start ? ((end - start) / start) * 100 : 0;
 const fmtIndex = (n) => Number.isFinite(n) ? n.toFixed(1) : '—';
 const timeAgo = (iso) => {
   const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
@@ -63,10 +59,11 @@ function useMarketData() {
     try {
       // Vite injects the correct base path; data lives in /public/data/
       const base = import.meta.env.BASE_URL;
-      const [m, h, x] = await Promise.all([
-        fetch(`${base}data/market.json?t=${Date.now()}`).then(r => r.json()),
-        fetch(`${base}data/history.json?t=${Date.now()}`).then(r => r.json()),
-        fetch(`${base}data/transactions.json?t=${Date.now()}`).then(r => r.json()),
+      const m = await fetch(`${base}data/market.json`, { cache: 'no-store' }).then(r => r.json());
+      const v = encodeURIComponent(m.updatedAt || Date.now());
+      const [h, x] = await Promise.all([
+        fetch(`${base}data/history.json?v=${v}`).then(r => r.json()),
+        fetch(`${base}data/transactions.json?v=${v}`).then(r => r.json()),
       ]);
       setData({ loading: false, error: null, market: m, history: h, txns: x });
     } catch (e) {
@@ -256,7 +253,7 @@ export default function Dashboard() {
     if (!market) return [];
     return SET_METADATA.map(meta => ({
       ...meta,
-      ...(market.quotes[meta.code] || { price: 0, change30d: 0, high52w: 0, low52w: 0, volume30d: 0, listings: 0, soldLast7d: 0, bid: 0, ask: 0, spread: 0, rsi: 50, momentum: 'neutral', signal: 'HOLD' }),
+      ...(market.quotes[meta.code] || { price: 0, change30d: 0, high52w: 0, low52w: 0, volume30d: 0, listings: 0, soldLast7d: 0, bid: 0, ask: 0, spread: 0, rsi: 50, momentum: 'neutral', signal: 'HOLD', stale: true }),
     }));
   }, [market]);
 
@@ -281,82 +278,14 @@ export default function Dashboard() {
   const selected = sets.find(s => s.code === selectedSet) || sets[0];
   const selectedHistory = selected ? (history?.[selected.code] || []) : [];
 
-  // Add moving averages on the fly
-  const chartData = useMemo(() => {
-    if (!selectedHistory.length) return [];
-    return selectedHistory
-      .map(row => ({ ...row, ts: parseChartTime(row.date) }))
-      .filter(row => row.ts && row.price > 0)
-      .sort((a, b) => a.ts - b.ts)
-      .map((row, i, rows) => {
-        const priced = rows.slice(0, i + 1).filter(p => p.price > 0);
-        const w7 = priced.slice(-7);
-        const w30 = priced.slice(-30);
-        return {
-          ...row,
-          axis: i,
-          ma7: w7.length ? Math.round(w7.reduce((s, p) => s + p.price, 0) / w7.length * 100) / 100 : null,
-          ma30: w30.length ? Math.round(w30.reduce((s, p) => s + p.price, 0) / w30.length * 100) / 100 : null,
-        };
-      });
-  }, [selectedHistory]);
+  const chartData = useMemo(() => buildChartData(selectedHistory), [selectedHistory]);
   const selectedFirst = chartData[0];
   const selectedLast = chartData[chartData.length - 1];
   const selectedAllTimeChange = selectedFirst && selectedLast ? pctChange(selectedFirst.price, selectedLast.price) : 0;
 
-  const active = sets.filter(s => s.price > 0);
-  const totalCap = active.reduce((sum, s) => sum + s.price * s.volume30d, 0);
-  const totalVol = active.reduce((sum, s) => sum + s.volume30d, 0);
-  const avgChange = active.length ? active.reduce((sum, s) => sum + s.change30d, 0) / active.length : 0;
-  const gainers = active.filter(s => s.change30d > 0).length;
-  const losers = active.filter(s => s.change30d < 0).length;
-  const buys = active.filter(s => s.signal === 'BUY' || s.signal === 'STRONG BUY').length;
-  const topGainers = [...active].sort((a, b) => b.change30d - a.change30d).slice(0, 5);
-  const topLosers = [...active].sort((a, b) => a.change30d - b.change30d).slice(0, 5);
+  const { active, totalCap, totalVol, avgChange, gainers, losers, buys, topGainers, topLosers } = computeMarketStats(sets);
 
-  const indexData = useMemo(() => {
-    if (!history || !sets.length) return [];
-    const trackedCodes = new Set(sets.map(s => s.code));
-    const grouped = new Map();
-    for (const code of trackedCodes) {
-      for (const row of history[code] || []) {
-        const price = Number(row.price);
-        const ts = parseChartTime(row.date);
-        if (!ts || !price || price <= 0) continue;
-        const bucket = grouped.get(ts) || [];
-        bucket.push({ code, price, source: row.source });
-        grouped.set(ts, bucket);
-      }
-    }
-    const latest = new Map();
-    const baselines = new Map();
-    return [...grouped.entries()]
-      .sort(([a], [b]) => a - b)
-      .map(([ts, events], i) => {
-        for (const event of events) {
-          if (!baselines.has(event.code)) baselines.set(event.code, event.price);
-          latest.set(event.code, event.price);
-        }
-        const prices = sets.map(s => latest.get(s.code)).filter(p => p > 0);
-        const normalized = sets
-          .map(s => {
-            const price = latest.get(s.code);
-            const base = baselines.get(s.code);
-            return price && base ? (price / base) * 100 : null;
-          })
-          .filter(p => p > 0);
-        const changed = events.map(e => e.code).join(', ');
-        return {
-          axis: i,
-          ts,
-          index: Math.round(normalized.reduce((sum, p) => sum + p, 0) / normalized.length * 100) / 100,
-          avgPrice: Math.round(prices.reduce((sum, p) => sum + p, 0) / prices.length * 100) / 100,
-          coverage: normalized.length,
-          totalSets: sets.length,
-          changed,
-        };
-      });
-  }, [history, sets]);
+  const indexData = useMemo(() => buildIndexData(history, sets), [history, sets]);
   const indexFirst = indexData[0];
   const indexLast = indexData[indexData.length - 1];
   const indexAllTimeChange = indexFirst && indexLast ? pctChange(indexFirst.index, indexLast.index) : 0;
@@ -623,6 +552,7 @@ export default function Dashboard() {
                           <TierBadge tier={s.tier} />
                           {s.status === 'rotated' && <span style={{ fontSize: 9, color: t.textDim, padding: '2px 5px', background: t.bgTertiary }}>ROTATED</span>}
                           {s.status === 'preorder' && <span style={{ fontSize: 9, color: t.info, padding: '2px 5px', background: `${t.info}10` }}>PREORDER</span>}
+                          {s.stale && s.price > 0 && <span style={{ fontSize: 9, color: t.warn, padding: '2px 5px', background: `${t.warn}10` }}>CACHED</span>}
                         </div>
                       </td>
                       <td style={{ padding: '10px 8px', textAlign: 'right', color: t.textBright, fontWeight: 600, fontSize: 13 }}>{fmt$(s.price)}</td>
@@ -763,7 +693,7 @@ export default function Dashboard() {
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
             <AlertCircle size={14} style={{ color: t.warn, flexShrink: 0, marginTop: 2 }} />
             <div>
-              <strong style={{ color: t.warn }}>DATA NOTE:</strong> Prices auto-updated by GitHub Actions hourly from TCGPlayer (and eBay sold comps if EBAY_APP_ID secret is configured). Last refresh: <strong style={{ color: t.text }}>{new Date(market.updatedAt).toLocaleString()}</strong>. Volume figures are 30-day estimates. Always verify the live TCGPlayer/eBay quote before placing a trade — sealed TCG product is illiquid and prices can move sharply on reprint announcements. Not financial advice.
+              <strong style={{ color: t.warn }}>DATA NOTE:</strong> Prices auto-updated by GitHub Actions hourly from TCGPlayer. Last refresh: <strong style={{ color: t.text }}>{new Date(market.updatedAt).toLocaleString()}</strong>. Volume figures are 30-day estimates. Always verify the live TCGPlayer/eBay quote before placing a trade — sealed TCG product is illiquid and prices can move sharply on reprint announcements. Not financial advice.
             </div>
           </div>
         </section>

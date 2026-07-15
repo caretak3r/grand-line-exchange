@@ -34,7 +34,6 @@ jobs:
 
       - name: Run price scraper
         env:
-          EBAY_APP_ID: ${{ secrets.EBAY_APP_ID }}
           TCGPLAYER_BEARER: ${{ secrets.TCGPLAYER_BEARER }}
           DRY_RUN: ${{ github.event.inputs.dry_run == 'true' && '1' || '0' }}
         run: python scripts/update-prices.py
@@ -44,11 +43,10 @@ jobs:
         run: |
           python - <<'PY'
           import json
-          import re
           from collections import Counter
           from pathlib import Path
 
-          set_codes = re.findall(r"code:\s*['\"]([^'\"]+)['\"]", Path("src/data/sets.js").read_text())
+          set_codes = [s["code"] for s in json.loads(Path("src/data/sets.json").read_text())]
           market = json.loads(Path("public/data/market.json").read_text())
           history = json.loads(Path("public/data/history.json").read_text())
           txns = json.loads(Path("public/data/transactions.json").read_text())
@@ -60,7 +58,7 @@ jobs:
           non_sold_txns = [t.get("id") for t in txns if t.get("type") != "SOLD"]
 
           if len(set_codes) != len(set(set_codes)):
-              raise SystemExit("Duplicate set codes found in src/data/sets.js.")
+              raise SystemExit("Duplicate set codes found in src/data/sets.json.")
           if missing_quotes:
               raise SystemExit(f"Missing market quotes for tracked sets: {missing_quotes}")
           if len(positive_quotes) != len(set_codes):
@@ -80,7 +78,7 @@ jobs:
         run: |
           git config user.name  "grand-line-bot"
           git config user.email "grand-line-bot@users.noreply.github.com"
-          git add public/data/market.json public/data/history.json public/data/transactions.json
+          git add public/data/market.json public/data/history.json public/data/history-archive.json public/data/transactions.json
           if git diff --staged --quiet; then
             echo "No price changes to commit."
           else

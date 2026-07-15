@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
 """
-update-prices.py — Fetches live booster box prices from TCGPlayer (and optionally eBay),
+update-prices.py — Fetches live booster box prices from TCGPlayer,
 updates public/data/market.json + history.json + transactions.json, and writes a summary.
 
 Designed to run from GitHub Actions on a schedule. Resilient by design:
   - If a fetch fails for any individual set, it keeps the previous value.
   - If the entire run fails, the existing JSON is left untouched.
-  - If the optional EBAY_APP_ID secret is set, eBay sold-comp data is folded in.
 
 Usage:  python scripts/update-prices.py
 Env vars (all optional):
-  EBAY_APP_ID       — eBay Browse API app ID for real sold-comp data
   TCGPLAYER_BEARER  — TCGPlayer API bearer if you have partner access; otherwise public scrape
   DRY_RUN=1         — print but don't write
   INITIAL_SCRAPE=1  — rebuild public/data from live TCGPlayer market/listing/sales endpoints
@@ -18,7 +16,6 @@ Env vars (all optional):
 
 import json
 import os
-import re
 import subprocess
 import sys
 import time
@@ -34,38 +31,33 @@ DATA_DIR = ROOT / 'public' / 'data'
 MARKET = DATA_DIR / 'market.json'
 HISTORY = DATA_DIR / 'history.json'
 TXNS = DATA_DIR / 'transactions.json'
-SETS_JS = ROOT / 'src' / 'data' / 'sets.js'
+SETS_JSON = ROOT / 'src' / 'data' / 'sets.json'
+ARCHIVE = DATA_DIR / 'history-archive.json'
+RETENTION_DAYS = 365
 
 DRY_RUN = os.environ.get('DRY_RUN') == '1'
 INITIAL_SCRAPE = os.environ.get('INITIAL_SCRAPE') == '1'
-EBAY_APP_ID = os.environ.get('EBAY_APP_ID')
 TCGPLAYER_BEARER = os.environ.get('TCGPLAYER_BEARER')
 TCGPLAYER_MPFEV = '5106'
 
-# ─── PARSE SET METADATA FROM sets.js ───────────────────────────────────────
+# ─── LOAD SET METADATA FROM sets.json ──────────────────────────────────────
 def load_sets():
-    """Parse the sets.js file to extract tracked product metadata."""
-    text = SETS_JS.read_text()
-    sets = []
-    # Match each {...} block inside SET_METADATA
-    for m in re.finditer(r"\{([^}]+)\}", text, re.DOTALL):
-        block = m.group(1)
-        def find(key):
-            mm = re.search(rf"{key}:\s*['\"]?([^,'\"\n]+)['\"]?", block)
-            return mm.group(1).strip() if mm else None
-        code = find('code')
-        pid = find('tcgProductId')
-        msrp = find('msrp')
-        status = find('status')
-        released = find('released')
-        if code and pid:
-            sets.append({
-                'code': code,
-                'tcgProductId': pid,
-                'msrp': int(msrp) if msrp and msrp.isdigit() else 144,
-                'status': status or 'active',
-                'released': released,
-            })
+    """Load tracked product metadata; fail loudly on any malformed entry."""
+    sets = json.loads(SETS_JSON.read_text())
+    if not isinstance(sets, list) or not sets:
+        raise RuntimeError(f'{SETS_JSON} must be a non-empty JSON array')
+    seen = set()
+    for s in sets:
+        for key in ('code', 'name', 'released', 'msrp', 'status', 'tcgProductId'):
+            if key not in s:
+                raise RuntimeError(f'sets.json entry missing {key!r}: {s}')
+        if not isinstance(s['msrp'], int):
+            raise RuntimeError(f"sets.json msrp must be an integer for {s['code']}")
+        if not isinstance(s['tcgProductId'], str) or not s['tcgProductId'].isdigit():
+            raise RuntimeError(f"sets.json tcgProductId must be a numeric string for {s['code']}")
+        if s['code'] in seen:
+            raise RuntimeError(f"Duplicate set code in sets.json: {s['code']}")
+        seen.add(s['code'])
     return sets
 
 # ─── TCGPLAYER FETCHING ────────────────────────────────────────────────────
@@ -73,16 +65,6 @@ USER_AGENT = (
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
     '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
 )
-
-def http_get(url, timeout=15):
-    req = Request(url, headers={
-        'User-Agent': USER_AGENT,
-        'Accept': 'text/html,application/xhtml+xml,application/json,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9',
-    })
-    with urlopen(req, timeout=timeout) as r:
-        return r.read().decode('utf-8', errors='replace')
-
 
 def tcgplayer_headers(product_id=None):
     headers = {
@@ -128,10 +110,11 @@ def request_json(url, body=None, timeout=15, product_id=None, curl_fallback=Fals
 
 
 def money(value):
+    """Parse a numeric field; None when absent or malformed (never 0.0)."""
     try:
         return float(value)
     except (TypeError, ValueError):
-        return 0.0
+        return None
 
 
 def fetch_tcgplayer_price(product_id):
@@ -155,9 +138,9 @@ def fetch_tcgplayer_price(product_id):
         return None
     return {
         'marketPrice': market_price,
-        'lowPrice': low_price,
-        'lowestPriceWithShipping': low_with_shipping,
-        'listings': int(money(data.get('sellers'))),
+        'lowPrice': low_price or 0.0,
+        'lowestPriceWithShipping': low_with_shipping or 0.0,
+        'listings': int(money(data.get('sellers')) or 0),
         'productName': data.get('productName', ''),
         'sku': (data.get('skus') or [{}])[0].get('sku'),
     }
@@ -188,7 +171,7 @@ def fetch_tcgplayer_listings(product_id, size=3):
         return {'totalResults': 0, 'listings': []}
     result = (data.get('results') or [{}])[0]
     return {
-        'totalResults': int(money(result.get('totalResults'))),
+        'totalResults': int(money(result.get('totalResults')) or 0),
         'listings': result.get('results') or [],
     }
 
@@ -210,43 +193,6 @@ def fetch_tcgplayer_latest_sales(product_id, product_name=''):
         return sales
     except (subprocess.CalledProcessError, URLError, HTTPError, TimeoutError, json.JSONDecodeError) as e:
         print(f'  latest sales fetch failed for {product_id}: {e}')
-        return None
-
-
-# ─── EBAY SOLD COMPS (OPTIONAL) ────────────────────────────────────────────
-def fetch_ebay_sold(query, app_id):
-    """If EBAY_APP_ID is set, fetch recent sold listings via Browse API. Returns count + avg."""
-    if not app_id:
-        return None
-    # eBay Finding API — completed listings endpoint (deprecated but still works for sold comps)
-    url = (
-        'https://svcs.ebay.com/services/search/FindingService/v1'
-        f'?OPERATION-NAME=findCompletedItems&SERVICE-VERSION=1.13.0'
-        f'&SECURITY-APPNAME={app_id}&RESPONSE-DATA-FORMAT=JSON'
-        f'&keywords={query.replace(" ", "%20")}'
-        '&itemFilter(0).name=SoldItemsOnly&itemFilter(0).value=true'
-        '&paginationInput.entriesPerPage=20&sortOrder=EndTimeSoonest'
-    )
-    try:
-        data = json.loads(http_get(url))
-        items = data.get('findCompletedItemsResponse', [{}])[0].get('searchResult', [{}])[0].get('item', [])
-        prices = []
-        for it in items:
-            try:
-                p = float(it['sellingStatus'][0]['currentPrice'][0]['__value__'])
-                prices.append(p)
-            except (KeyError, ValueError, IndexError):
-                continue
-        if not prices:
-            return None
-        return {
-            'sold_count': len(prices),
-            'avg_sold': round(sum(prices) / len(prices), 2),
-            'min_sold': min(prices),
-            'max_sold': max(prices),
-        }
-    except Exception as e:
-        print(f'  eBay fetch failed: {e}')
         return None
 
 
@@ -285,12 +231,42 @@ def compute_rsi(prices):
     return round(100 - (100 / (1 + rs)))
 
 
+def daily_closes(rows):
+    """Per UTC day: the day's last market-snapshot price, else the median of
+    that day's sale prices. Returns closes in day order (RSI input)."""
+    days = {}
+    for row in rows or []:
+        price = money(row.get('price'))
+        parsed = parse_datetime(row.get('date'))
+        if not price or price <= 0 or not parsed:
+            continue
+        day = parsed.strftime('%Y-%m-%d')
+        entry = days.setdefault(day, {'market': None, 'sales': []})
+        if row.get('source') == 'tcgplayer current market':
+            entry['market'] = price
+        else:
+            entry['sales'].append(price)
+    closes = []
+    for day in sorted(days):
+        entry = days[day]
+        if entry['market'] is not None:
+            closes.append(entry['market'])
+        else:
+            sales = sorted(entry['sales'])
+            mid = len(sales) // 2
+            closes.append(sales[mid] if len(sales) % 2 else (sales[mid - 1] + sales[mid]) / 2)
+    return closes
+
+
 def count_positive_quotes(quotes):
     return sum(1 for q in quotes.values() if q.get('price', 0) > 0)
 
 
 def sale_total(sale):
-    return money(sale.get('purchasePrice')) + money(sale.get('shippingPrice'))
+    price = money(sale.get('purchasePrice'))
+    if price is None:
+        return None
+    return price + (money(sale.get('shippingPrice')) or 0.0)
 
 
 def sale_quantity(sale):
@@ -347,6 +323,39 @@ def merge_history_points(*groups):
     return sorted(merged.values(), key=history_sort_key)
 
 
+def prune_history(rows, now):
+    """Split sorted history rows into (kept, archived). Months fully older
+    than RETENTION_DAYS keep one spine row (their last positive-price row)
+    and their release anchors; everything else in them is archived."""
+    cutoff = now - timedelta(days=RETENTION_DAYS)
+    by_month = {}
+    for row in rows or []:
+        parsed = parse_datetime(row.get('date'))
+        key = parsed.strftime('%Y-%m') if parsed else None
+        by_month.setdefault(key, []).append(row)
+    kept, archived = [], []
+    for key, group in by_month.items():
+        if key is None:
+            kept.extend(group)
+            continue
+        year, month = int(key[:4]), int(key[5:7])
+        month_end = datetime(year + (month == 12), month % 12 + 1, 1, tzinfo=timezone.utc)
+        if month_end >= cutoff:
+            kept.extend(group)
+            continue
+        spine = None
+        for row in group:  # rows arrive sorted, so the last hit is the latest
+            price = money(row.get('price'))
+            if price and price > 0:
+                spine = row
+        for row in group:
+            if row is spine or row.get('source') == 'release date':
+                kept.append(row)
+            else:
+                archived.append(row)
+    return sorted(kept, key=history_sort_key), archived
+
+
 def release_anchor(release_date):
     return {
         'date': release_date,
@@ -372,10 +381,10 @@ def current_market_point(price, today):
 def sales_history_points(sales):
     points = []
     for sale in sales or []:
-        order_date = sale.get('orderDate') or ''
-        label = order_date[:16].replace('T', ' ') if len(order_date) >= 16 else sale_date(sale)
+        parsed = parse_datetime(sale.get('orderDate'))
+        label = parsed.strftime('%Y-%m-%dT%H:%MZ') if parsed else sale_date(sale)
         price = sale_total(sale)
-        if not label or price <= 0:
+        if not label or not price or price <= 0:
             continue
         points.append({
             'date': label,
@@ -402,7 +411,7 @@ def history_prices_since(rows, days, now):
     for row in rows or []:
         price = money(row.get('price'))
         parsed = parse_datetime(row.get('date'))
-        if price > 0 and parsed and parsed >= cutoff:
+        if price and price > 0 and parsed and parsed >= cutoff:
             prices.append(price)
     return prices
 
@@ -412,7 +421,7 @@ def price_at_or_before(rows, cutoff):
     for row in rows or []:
         price = money(row.get('price'))
         parsed = parse_datetime(row.get('date'))
-        if price > 0 and parsed and parsed <= cutoff:
+        if price and price > 0 and parsed and parsed <= cutoff:
             candidates.append((parsed, price))
     if not candidates:
         return None
@@ -427,7 +436,7 @@ def history_sales_volume_since(rows, days, now):
             continue
         parsed = parse_datetime(row.get('date'))
         if parsed and parsed >= cutoff:
-            total += max(0, int(money(row.get('volume'))))
+            total += max(0, int(money(row.get('volume')) or 0))
     return total
 
 
@@ -450,7 +459,7 @@ def sale_transactions_for_interval(code, sales, interval_start, existing_ids):
         if interval_start and (not sold_at or sold_at <= interval_start):
             continue
         total = sale_total(sale)
-        if total <= 0:
+        if not total or total <= 0:
             continue
         txn_id = sale_transaction_id(code, sale, idx)
         if txn_id in existing_ids:
@@ -499,10 +508,12 @@ def main():
     market = json.loads(MARKET.read_text()) if MARKET.exists() else {'quotes': {}}
     history = json.loads(HISTORY.read_text()) if HISTORY.exists() else {}
     txns = json.loads(TXNS.read_text()) if TXNS.exists() else []
+    archive = json.loads(ARCHIVE.read_text()) if ARCHIVE.exists() else {}
     sets = load_sets()
     if INITIAL_SCRAPE:
         history = {}
         txns = []
+        archive = {}
     else:
         txns = compact_transactions(txns)
     interval_start = None if INITIAL_SCRAPE else parse_datetime(market.get('updatedAt'))
@@ -511,9 +522,9 @@ def main():
     if interval_start:
         print(f'Only adding TCGPlayer sales after previous run: {interval_start.isoformat()}')
 
-    today = now.strftime('%Y-%m-%d %H:%M')
+    today = now.strftime('%Y-%m-%dT%H:%MZ')
     new_quotes = {}
-    fetched, kept, ebay_updates = 0, 0, 0
+    fetched, kept = 0, 0
     new_txns = []
 
     for s in sets:
@@ -541,14 +552,6 @@ def main():
             kept += 1
             print(f'  · {code}: kept ${price} (no fresh data)')
 
-        # Optional eBay enrichment
-        if EBAY_APP_ID and price > 0:
-            ebay = fetch_ebay_sold(f'one piece {code} booster box english sealed', EBAY_APP_ID)
-            if ebay:
-                price = round((price + ebay['avg_sold']) / 2, 2)  # blend
-                ebay_updates += 1
-                print(f'    eBay blend: avg ${ebay["avg_sold"]} over {ebay["sold_count"]} sales')
-
         hist = build_verified_history(
             history.get(code, []),
             s.get('released'),
@@ -558,9 +561,13 @@ def main():
             reset=INITIAL_SCRAPE,
         )
         history[code] = hist
+        hist, archived_rows = prune_history(hist, now)
+        history[code] = hist
+        if archived_rows:
+            archive[code] = merge_history_points(archive.get(code, []), archived_rows)
 
         # Compute window metrics
-        prices = [money(h.get('price')) for h in hist if money(h.get('price')) > 0]
+        prices = [p for p in (money(h.get('price')) for h in hist) if p and p > 0]
         if not prices:
             continue
         prices_52w = history_prices_since(hist, 365, now) or prices
@@ -599,15 +606,17 @@ def main():
             'bid': bid,
             'ask': ask,
             'spread': spread,
-            'rsi': compute_rsi(prices),
+            'rsi': compute_rsi(daily_closes(hist)),
             'momentum': 'bullish' if change30d > 4 else 'bearish' if change30d < -3 else 'neutral',
             'signal': compute_signal(price, change30d, high52w, low52w, s['status']),
-            'lastUpdated': datetime.now(timezone.utc).isoformat(),
+            'stale': not has_live_price,
+            'lastUpdated': (datetime.now(timezone.utc).isoformat() if has_live_price
+                            else prev_quote.get('lastUpdated') or datetime.now(timezone.utc).isoformat()),
         }
 
     existing_positive = count_positive_quotes(market.get('quotes', {}))
     new_positive = count_positive_quotes(new_quotes)
-    live_updates = fetched + ebay_updates
+    live_updates = fetched
 
     if live_updates == 0:
         if existing_positive and new_positive:
@@ -626,13 +635,13 @@ def main():
 
     out_market = {
         'updatedAt': datetime.now(timezone.utc).isoformat(),
-        'source': 'tcgplayer initial scrape' if INITIAL_SCRAPE else 'tcgplayer' + (' + ebay' if EBAY_APP_ID else ''),
+        'source': 'tcgplayer initial scrape' if INITIAL_SCRAPE else 'tcgplayer',
         'fetched': fetched,
         'kept': kept,
         'quotes': new_quotes,
     }
 
-    print(f'\n→ {fetched} fetched, {ebay_updates} eBay-enriched, {kept} kept from cache, {len(new_txns)} new sales added.')
+    print(f'\n→ {fetched} fetched, {kept} kept from cache, {len(new_txns)} new sales added.')
 
     if DRY_RUN:
         print('DRY_RUN=1 — not writing files.')
@@ -641,6 +650,7 @@ def main():
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     MARKET.write_text(json.dumps(out_market, indent=2) + '\n')
     HISTORY.write_text(json.dumps(history, indent=2) + '\n')
+    ARCHIVE.write_text(json.dumps(archive, indent=2) + '\n')
     TXNS.write_text(json.dumps(txns, indent=2) + '\n')
     print(f'✓ Wrote {MARKET.relative_to(ROOT)}, {HISTORY.relative_to(ROOT)}, {TXNS.relative_to(ROOT)}')
 
