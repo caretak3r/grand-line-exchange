@@ -1,0 +1,27 @@
+{
+  "name": "grand-line-exchange-docs",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Nextra documentation site for Grand Line Exchange (self-contained, not part of the dashboard build)",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "next": "^16.2.10",
+    "nextra": "^4.6.1",
+    "nextra-theme-docs": "^4.6.1",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.2.5",
+    "typescript": "^5.7.3"
+  },
+  "overrides": {
+    "zod": "4.1.12"
+  }
+}

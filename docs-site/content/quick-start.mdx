@@ -1,0 +1,56 @@
+---
+title: Quick Start
+---
+
+# Quick Start
+
+## Clone and run the dashboard
+
+```bash
+git clone https://github.com/caretak3r/grand-line-exchange.git
+cd grand-line-exchange
+npm install
+npm run dev
+# → http://localhost:5173
+```
+
+## Run the scraper locally
+
+`scripts/update-prices.py` is stdlib-only Python — no `pip install` step.
+
+```bash
+python scripts/update-prices.py            # writes to public/data/
+DRY_RUN=1 python scripts/update-prices.py   # preview, no writes
+```
+
+See the [Ops Runbook](/ops-runbook) for the full environment-variable
+reference (`DRY_RUN`, `INITIAL_SCRAPE`) and what each of the four GitHub
+Actions workflows does.
+
+## Verification gates
+
+A change is not done until all three pass:
+
+```bash
+npm test              # vitest, 12 tests — pins TZ=UTC
+pytest -q tests/      # 57 tests — use Homebrew pytest, never pip install locally
+npm run build          # must exit 0 with NO >500kB chunk warning
+```
+
+<Callout type="warning">
+  Both suites pin `TZ=UTC`. Without it, UTC day-bucketing assertions pass or
+  fail depending on the runner's local timezone.
+</Callout>
+
+## Deploy to GitHub Pages
+
+1. Push the repo to GitHub.
+2. **Settings → Pages** → set **Source = GitHub Actions**.
+3. `deploy.yml` builds and deploys on push to `main` (and after a
+   successful `Update Prices` run).
+4. The dashboard is live at `https://<you>.github.io/<repo>/`.
+
+This documentation site (`docs-site/`) is a separate, self-contained Next.js
+project. It is **not** deployed automatically — see
+[Ops Runbook → Docs site deploy](/ops-runbook#docs-site-deploy-manual-only)
+for why and how to trigger it manually.

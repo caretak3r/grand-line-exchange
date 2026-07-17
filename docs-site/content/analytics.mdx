@@ -1,0 +1,111 @@
+---
+title: Analytics Semantics
+---
+
+# Analytics Semantics
+
+This page covers the math behind the numbers on the dashboard, split by
+who owns each value — see [Architecture](/architecture#the-ownership-rule-load-bearing)
+for why the split exists at all.
+
+## Daily closes (shared algorithm, ingest-side and browser-side)
+
+Both `compute_rsi()` (Python, ingest) and `buildChartData()` (JS, browser)
+need one price per UTC calendar day, computed the same rule:
+
+1. Group history rows by UTC day (`date` parsed and truncated to
+   `YYYY-MM-DD`).
+2. If that day has a `tcgplayer current market` row, its price **wins** as
+   the day's close.
+3. Otherwise, take the **median** of that day's `tcgplayer latest sale`
+   rows.
+
+<Callout type="default">
+  Worked example: daily closes `[95, 110, 84]` → 3-day moving average
+  `(95 + 110 + 84) / 3 = 96.33`. Both suites pin a test against this exact
+  fixture, so a semantics change on either side that isn't mirrored on the
+  other fails a test immediately rather than silently drifting.
+</Callout>
+
+## RSI — ingest-side (`compute_rsi()`)
+
+Real Wilder RSI-14 over the daily closes, not a heuristic:
+
+- Fewer than 15 daily closes available → RSI defaults to `50` (neutral,
+  not "unknown").
+- Otherwise: average gain and average loss over the first 14 periods,
+  then Wilder-smoothed (`(prev_avg * 13 + current) / 14`) across the rest
+  of the series, and `RSI = 100 - 100 / (1 + avg_gain / avg_loss)`.
+- `avg_loss == 0` → RSI is `100` (all gains, no losses).
+
+This value is computed once in Python and persisted to `market.json.quotes[code].rsi`
+— the browser never recomputes it.
+
+## Buy/sell signal — ingest-side (`compute_signal()`)
+
+Computed from `change30d` and the set's position within its 52-week range
+(`range_pos = (price - low52w) / max(1, high52w - low52w)`):
+
+| Condition | Signal |
+|---|---|
+| `status == preorder` | `PREORDER` (short-circuits everything else) |
+| `price == 0` | `HOLD` |
+| `change30d > 7` and `range_pos < 0.6` | `STRONG BUY` |
+| `change30d > 3` | `BUY` |
+| `change30d < -4` | `WATCH` |
+| `range_pos > 0.85` | `WATCH` |
+| otherwise | `HOLD` |
+
+Rules are checked top-to-bottom in this order — e.g. a set up 8% but
+already in the top 15% of its range does **not** get `STRONG BUY` because
+`range_pos < 0.6` fails first.
+
+`momentum` is a coarser, separate label from the same `change30d`:
+`bullish` if `> 4`, `bearish` if `< -3`, else `neutral`.
+
+## Browser-side derivations (`src/lib/analytics.js`)
+
+Everything below is computed client-side, on every page load, from
+`history.json` and `market.json` — never persisted, never sent back to the
+ingest side.
+
+### Moving averages (`buildChartData()`)
+
+Re-derives the same daily-closes rule described above, then computes
+rolling `ma7` and `ma30` as the mean close over the trailing 7 or 30
+calendar days (inclusive of the current day). Per-observation rows (not
+just daily closes) are kept for the price line, volume bars, and tooltips
+— only the moving-average values are day-bucketed.
+
+### Grand Line Index (`buildIndexData()`)
+
+An equal-weight, base-100 index across all tracked sets:
+
+1. Every history event (across all sets) is grouped by exact timestamp.
+2. Each set's **first observed price** becomes its baseline (100).
+3. At each timestamp, each set's price is normalized to
+   `(latest_price / baseline) * 100`, carrying forward the last known
+   price for any set that didn't have an event at that exact timestamp.
+4. The index value at that timestamp is the mean of all normalized,
+   currently-known set values.
+
+`coverage` (how many of the tracked sets have a known price at that point)
+and `changed` (which set codes moved at that exact timestamp) ride along
+for chart tooltips.
+
+### Market-pulse aggregates (`computeMarketStats()`)
+
+Computed over `active` sets (`price > 0`) only:
+
+| Field | Meaning |
+|---|---|
+| `totalCap` | Σ `price * volume30d` across active sets — a rough proxy for market size, not a real market cap. |
+| `totalVol` | Σ `volume30d` across active sets. |
+| `avgChange` | Mean `change30d` across active sets. |
+| `gainers` / `losers` | Count of active sets with `change30d > 0` / `< 0`. |
+| `buys` | Count of active sets with signal `BUY` or `STRONG BUY`. |
+| `topGainers` / `topLosers` | Top 5 active sets by `change30d`, descending / ascending. |
+
+`active` itself is returned (not just the aggregates) because the render
+layer uses the filtered list directly — the ticker, stat cards, decision
+matrix, and footer all read from it.

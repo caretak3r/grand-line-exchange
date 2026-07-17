@@ -1,0 +1,118 @@
+---
+title: Data Contracts
+---
+
+# Data Contracts
+
+Field-by-field contracts for the four files under `public/data/` and the
+one under `src/data/`. Derived from reading `scripts/update-prices.py`
+(the sole writer of `public/data/*`) and the current committed data files —
+every field below traces to the source line that produces it. Full version
+with line numbers:
+[`docs/specs/json-contracts.md`](https://github.com/caretak3r/grand-line-exchange/blob/main/docs/specs/json-contracts.md).
+
+## `src/data/sets.json` — tracked-set metadata (hand-maintained)
+
+Strictly validated by `load_sets()`: missing keys, a non-integer `msrp`, a
+non-numeric-string `tcgProductId`, or a duplicate `code` all hard-fail the
+scraper before any network call.
+
+| Field | Type | Semantics |
+|---|---|---|
+| `code` | string | Unique set identifier, used as the key into `market.json.quotes` and `history.json` (e.g. `"OP-01"`). |
+| `name` | string | Full display name. |
+| `short` | string | Shortened display name for tight UI space. |
+| `released` | string (`YYYY-MM-DD`) | Release date; seeds the release-date history anchor. |
+| `msrp` | integer | MSRP in USD; must be a JSON integer, not a float. |
+| `block` | integer | Set-era grouping. |
+| `status` | string enum | `active` \| `rotated` \| `preorder`. `preorder` short-circuits `compute_signal()` to `PREORDER` regardless of price action. |
+| `tier` | string enum | `grail` \| `premium` \| `mid` \| `value`. Display-only. |
+| `tcgProductId` | string of digits | TCGPlayer product ID; builds every TCGPlayer API URL. |
+| `tcgUrl` | string | Direct product page link. |
+| `notes` | string | Freeform display copy. |
+
+## `public/data/market.json` — latest quote snapshot (overwritten every run)
+
+```json
+{
+  "updatedAt": "2026-07-17T12:38:47.962377+00:00",
+  "source": "tcgplayer",
+  "fetched": 22,
+  "kept": 0,
+  "quotes": { "OP-01": { "...": "..." } }
+}
+```
+
+Top level:
+
+| Field | Type | Semantics |
+|---|---|---|
+| `updatedAt` | string, ISO-8601 UTC offset | Wall-clock write time, always `datetime.now(timezone.utc).isoformat()` regardless of any individual set's fetch outcome. |
+| `source` | string | `tcgplayer` for a normal run, `tcgplayer initial scrape` when `INITIAL_SCRAPE=1`. |
+| `fetched` | integer | Count of sets that got a fresh live price this run. |
+| `kept` | integer | Count of sets that fell back to the previous cached price this run. |
+| `quotes` | object, keyed by `code` | One entry per tracked set — the write refuses if any tracked `code` is missing. |
+
+Per-quote object:
+
+| Field | Type | Semantics |
+|---|---|---|
+| `price` | number | Current market price; live `marketPrice` if fetched, else the carried-over previous price. |
+| `prev` | number | Previous run's `price` (pre-update baseline); equals `price` on `INITIAL_SCRAPE`. |
+| `change30d` | number (%, 1dp) | `(price - price_30d_ago) / price_30d_ago * 100`. Falls back to an earliest-known-price approximation under `INITIAL_SCRAPE`, or the previous quote's `change30d`, if no 30d-ago point exists yet. |
+| `high52w` / `low52w` | number | Max/min of positive prices in the trailing 365 days (falls back to all-time if less history exists). |
+| `volume30d` | integer | Sum of sale-row volumes in the last 30 days; frozen at the previous value if the sales fetch failed entirely. |
+| `soldLast7d` | integer | Same, 7-day window. |
+| `listings` | integer | Active seller count, or the previous quote's count. |
+| `bid` | number | `round(min(price, ask) * 0.95, 2)`. |
+| `ask` | number | `lowestPriceWithShipping`, else `lowPrice`, else `price * 1.05`, rounded. |
+| `spread` | number (%, 1dp) | `(ask - bid) / max(1, (bid+ask)/2) * 100`; `0` when `price` is `0`. |
+| `rsi` | integer 0-100 | Wilder RSI-14 over daily closes; defaults to `50` with fewer than 15 daily closes. |
+| `momentum` | string enum | `bullish` (`change30d > 4`) \| `bearish` (`change30d < -3`) \| `neutral`. |
+| `signal` | string enum | `PREORDER` \| `STRONG BUY` \| `BUY` \| `WATCH` \| `HOLD` — see [Analytics Semantics](/analytics). |
+| `stale` | boolean | `not has_live_price` — true when this run fell back to a cached price. |
+| `lastUpdated` | string, ISO-8601 UTC offset | Timestamp of the live fetch if this run got one, else carried forward — tracks "when was this last a real quote," never resets to now on a cache-hit. |
+
+<Callout type="info">
+  `stale` is written by the current scraper but may not yet appear in an
+  older committed `market.json` if the file predates that field landing —
+  don't assume its absence means the field was removed.
+</Callout>
+
+## `public/data/history.json` — per-set price history (365d window + monthly spine)
+
+Object keyed by set `code` → array of row objects, sorted ascending by
+parsed timestamp. Three row shapes share one schema:
+
+| Field | Type | Semantics |
+|---|---|---|
+| `date` | string | `YYYY-MM-DD` for the release anchor; `YYYY-MM-DDTHH:MMZ` for market/sale points. Always parsed to UTC-aware. |
+| `price` | number \| null | `null` only for the `release date` anchor row. |
+| `volume` | integer | `0` for the release anchor, `1` for a market snapshot, sale quantity (`>= 1`) for a sale row. |
+| `source` | string enum | `release date` \| `tcgplayer current market` \| `tcgplayer latest sale`. Drives the daily-closes market-wins-else-median-of-sales rule and row dedup. |
+| `confidence` | string enum | `reference` for the release anchor, `verified` for market/sale rows. |
+
+Rows are pruned once their `YYYY-MM` bucket's month-end is older than
+`now - 365 days`; pruned rows move to `history-archive.json` (identical
+schema, same key).
+
+## `public/data/transactions.json` — live sale tape (rolling, max 100)
+
+Flat JSON array, most-recent-first, capped at 100 entries. Every entry
+currently has `type: "SOLD"` — non-`SOLD` rows are filtered out before
+write, so `type` is a vestigial extension point rather than an observed
+variant.
+
+| Field | Type | Semantics |
+|---|---|---|
+| `id` | string | `"{code}-sold-{orderDate}-{qty}-{cents}"` — doubles as the cross-run dedup key. |
+| `set` | string | Set `code`. |
+| `type` | string | Always `SOLD` in current output. |
+| `price` | number | `purchasePrice + shippingPrice`, rounded to 2dp. |
+| `venue` | string | Always `TCGPlayer`. |
+| `timestamp` | string, ISO-8601 | The sale's `orderDate`, or `now()` if absent. |
+| `qty` | integer | `max(1, quantity)`. |
+
+New rows are only appended for sales strictly after the previous run's
+`updatedAt`, so the tape never re-adds a sale it already recorded. A full
+rebuild happens only under `INITIAL_SCRAPE=1`.

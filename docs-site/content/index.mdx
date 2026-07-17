@@ -1,0 +1,42 @@
+---
+title: Grand Line Exchange Docs
+---
+
+# Grand Line Exchange
+
+A Bloomberg-Terminal-styled trading dashboard for One Piece TCG *sealed
+booster boxes* — 22 tracked English sets (OP-01…OP-15, EB, PRB), live
+prices, 30-day momentum, RSI, buy/sell signals, a live sales tape, and an
+equal-weight market index.
+
+{/* This site documents the dashboard; it does not host it. */}
+
+## The one idea everything follows from
+
+**There is no backend. The repo is the database.** A GitHub Action runs the
+scraper hourly and commits fresh JSON to `public/data/`. A static
+Vite/React build on GitHub Pages fetches those files at load. No servers,
+no API keys required, free to run forever.
+
+<Cards>
+  <Cards.Card title="Quick Start" href="/quick-start" />
+  <Cards.Card title="Architecture" href="/architecture" />
+  <Cards.Card title="Data Contracts" href="/data-contracts" />
+  <Cards.Card title="Analytics Semantics" href="/analytics" />
+  <Cards.Card title="Ops Runbook" href="/ops-runbook" />
+</Cards>
+
+## Where to look first
+
+- New to the repo? Start with [Quick Start](/quick-start).
+- Need to know who computes what? Read [Architecture](/architecture) —
+  it covers the ownership rule, which is load-bearing.
+- Adding a field to `market.json` or `history.json`? Read
+  [Data Contracts](/data-contracts) first — every field there is traced to
+  the source line that produces it.
+- Changing a chart or the index? Read [Analytics Semantics](/analytics).
+- Running the scraper, tuning the schedule, or debugging a workflow?
+  Read the [Ops Runbook](/ops-runbook).
+
+This site is generated from, and should stay consistent with, the specs
+under `docs/specs/` in the main repo and the top-level `CLAUDE.md`.

@@ -1,0 +1,119 @@
+---
+title: Ops Runbook
+---
+
+# Ops Runbook
+
+Reference for the four workflows under `.github/workflows/` and the
+scraper's environment variables. Three are the core runtime loop; the
+fourth (`release.yml`) is a separate, tag-triggered release tool.
+
+## `update-prices.py` environment variables
+
+| Variable | Effect |
+|---|---|
+| `DRY_RUN=1` | Prints what would change but writes nothing to `public/data/`. Use for local testing or a manual dry-run dispatch. |
+| `INITIAL_SCRAPE=1` | Rebuilds `public/data/` from live TCGPlayer market/listing/sales endpoints from scratch — resets `history`, `transactions`, and the archive to empty before repopulating. Use only for a genuine cold start, not routine runs. |
+| `TCGPLAYER_BEARER` | Optional bearer token secret, passed through to the fetch calls if the workflow provides it. |
+
+```bash
+python scripts/update-prices.py            # writes to public/data/
+DRY_RUN=1 python scripts/update-prices.py   # preview, no writes
+INITIAL_SCRAPE=1 python scripts/update-prices.py  # cold-start rebuild — destructive, use deliberately
+```
+
+## `update-prices.yml` — the hourly bot
+
+- **Trigger:** `cron: '15 * * * *'` (hourly, offset 15 minutes past to
+  avoid the top-of-hour rush), plus `workflow_dispatch` with a `dry_run`
+  input.
+- **Permissions:** `contents: write` — the only workflow in this repo that
+  commits back to `main`.
+- **Concurrency:** single group, no cancel-in-progress — runs queue rather
+  than overlap.
+- **Steps:** checkout (depth 1) → run the scraper → validate the written
+  JSON (duplicate codes, missing quotes, non-positive prices, missing
+  history, duplicate/non-`SOLD` transactions — any of these aborts before
+  commit) → commit as `grand-line-bot` with message
+  `📊 price update <UTC timestamp>` and push, or no-op if nothing changed.
+
+<Callout type="warning">
+  These `📊 price update …` commits are expected to pollute `git log` —
+  that's accepted, not a bug (see the [decision log](https://github.com/caretak3r/grand-line-exchange/blob/main/docs/specs/decision-log.md)).
+  Any changelog tooling must filter them out explicitly; `release.yml`
+  already does.
+</Callout>
+
+To adjust the schedule, edit the `cron` line in `update-prices.yml`.
+GitHub Actions enforces a 5-minute minimum interval, and frequent cron
+jobs can be delayed under platform load.
+
+## `deploy.yml` — dashboard → GitHub Pages
+
+- **Trigger:** push to `main` touching `src/**`, `public/**`, `index.html`,
+  `package.json`, or `vite.config.js`; a completed `Update Prices` run
+  (`workflow_run`); or manual `workflow_dispatch`.
+- **Permissions:** `contents: read`, `pages: write`, `id-token: write`.
+- **Steps:** `npm ci` → `npm run build` → `actions/upload-pages-artifact`
+  (`dist/`) → `actions/deploy-pages`.
+- This is the **only** deploy target that owns the live GitHub Pages site
+  for this repo. `docs-site/` deliberately does not share this workflow
+  — see below.
+
+## `ci.yml` — the gate
+
+- **Trigger:** push or PR to `main`.
+- Two parallel jobs: `node` (`npm ci` → `npm test` → `npm run build`) and
+  `python` (`pip install pytest` → `pytest -q tests/`). `pip install` is
+  safe here because it's an isolated CI runner, not a local dev machine —
+  see the environment gotchas in the root `CLAUDE.md`.
+
+## `release.yml` — tag-triggered GitHub Releases
+
+- **Trigger:** push of a `v*.*.*` tag.
+- Generates a changelog from conventional commits since the previous tag,
+  explicitly excluding `📊 price update …` bot commits and
+  `chore: bd interaction log` commits (`.github/scripts/generate-changelog.sh`).
+- Publishes a GitHub Release via `softprops/action-gh-release`.
+- Never creates tags itself — tagging remains a manual/external step.
+- Entirely outside the runtime data-flow loop; it never touches
+  `public/data/` or triggers a Pages deploy.
+
+## Docs site deploy (manual only)
+
+This documentation site (`docs-site/`) has its own workflow,
+`.github/workflows/docs.yml`, that builds it and uploads a Pages artifact
+— but its trigger is `workflow_dispatch` **only**. It does not run on push
+and is not wired to `deploy-pages` automatically.
+
+**Why:** the dashboard already owns the repo's GitHub Pages site via
+`deploy.yml`. A second workflow auto-deploying to the same Pages
+environment would race it or silently overwrite it. Enabling auto-deploy
+for the docs site requires first deciding Pages routing — e.g. a
+`basePath`-prefixed path, a separate Pages-enabled repo, or replacing the
+dashboard's Pages ownership outright. That's a real decision, not a
+default to fall into.
+
+To build and inspect the docs site locally:
+
+```bash
+cd docs-site
+npm install
+npm run build     # static export to docs-site/out/
+```
+
+### `BASE_PATH`
+
+`next.config.mjs` reads `BASE_PATH` from the environment rather than
+hardcoding it, because the correct value depends on **where** this site
+ends up deployed:
+
+| Deploy target | `BASE_PATH` |
+|---|---|
+| Public GitHub Pages project site (`<user>.github.io/<repo>`) | `/<repo>` (or a subpath, if co-hosted with the dashboard) |
+| Private Pages or a user/org root site (`<name>.github.io`) | unset / empty — setting a `basePath` here breaks every internal link and `_next/*` asset URL |
+
+```bash
+BASE_PATH=/docs npm run build   # example: served under /docs on the same Pages site
+npm run build                   # default: served from /
+```

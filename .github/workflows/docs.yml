@@ -1,0 +1,70 @@
+name: Deploy Docs Site to GitHub Pages
+
+# Manual dispatch ONLY — do not add a `push` trigger without reading this.
+#
+# The dashboard's `deploy.yml` already owns this repo's live GitHub Pages
+# site. Adding an automatic (push-based) trigger here would race or
+# silently overwrite the dashboard's Pages deployment, because both
+# workflows would compete for the same `github-pages` environment.
+# Enabling auto-deploy requires first deciding Pages routing between the
+# two sites (e.g. a basePath-prefixed subpath of the dashboard's existing
+# Pages site, a separate Pages-enabled repo, or handing Pages ownership to
+# docs-site outright) — see docs-site/content/ops-runbook.mdx for the
+# tradeoffs. Until that decision is made, this workflow only runs when a
+# human explicitly clicks "Run workflow".
+on:
+  workflow_dispatch:
+    inputs:
+      base_path:
+        description: 'BASE_PATH to build with (e.g. /docs). Leave empty for root.'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: docs-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: docs-site
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: docs-site/package-lock.json
+
+      - run: npm install
+
+      - name: Build static export
+        run: npm run build
+        env:
+          BASE_PATH: ${{ github.event.inputs.base_path }}
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: docs-site/out
+
+  # Only reachable via the manual workflow_dispatch trigger above — never
+  # via push. See the comment at the top of this file before adding any
+  # other trigger.
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
