@@ -1,5 +1,10 @@
 name: Deploy to GitHub Pages
 
+# Unified Pages deploy: GitHub Pages serves ONE artifact per repo, so the
+# dashboard (site root) and the docs site (/docs) are built here together
+# and merged into a single artifact. There must be no other workflow that
+# deploys to Pages — a second deploy would clobber this one.
+
 on:
   push:
     branches: [main]
@@ -9,6 +14,7 @@ on:
       - 'index.html'
       - 'package.json'
       - 'vite.config.js'
+      - 'docs-site/**'
       - '.github/workflows/deploy.yml'
   workflow_run:
     workflows: ['Update Prices']
@@ -37,15 +43,36 @@ jobs:
           node-version: 24
           cache: npm
           check-latest: true
+          cache-dependency-path: |
+            package-lock.json
+            docs-site/package-lock.json
       - run: npm ci
-      - name: Build
+      - name: Build dashboard
         run: npm run build
         env:
           GITHUB_ACTIONS: 'true'
           GITHUB_REPOSITORY: ${{ github.repository }}
+      - name: Install docs dependencies
+        run: npm ci
+        working-directory: docs-site
+      - name: Build docs site
+        run: npm run build
+        working-directory: docs-site
+        env:
+          BASE_PATH: /grand-line-exchange/docs
+      - name: Stage merged Pages artifact
+        run: |
+          mkdir site
+          cp -r dist/* site/
+          cp -r docs-site/out site/docs
+      - name: Verify merged artifact
+        run: |
+          test -f site/index.html
+          test -f site/docs/index.html
+          test -d site/data
       - uses: actions/upload-pages-artifact@v5
         with:
-          path: dist
+          path: site
   deploy:
     needs: build
     runs-on: ubuntu-latest
