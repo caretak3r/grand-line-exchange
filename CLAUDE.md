@@ -97,14 +97,14 @@ Every value **persisted** in `public/data/market.json` (price, RSI, signals, 52-
 
 ```bash
 npm run dev              # local dashboard at :5173
-npm test                 # vitest, 12 tests (script pins TZ=UTC — required)
+npm test                 # vitest, 40 tests (script pins TZ=UTC — required)
 pytest -q tests/         # 57 tests. Use Homebrew pytest or `uv run --with pytest`
 npm run build            # must exit 0 with NO >500kB chunk warning
 python scripts/update-prices.py           # full scrape (writes public/data/)
 DRY_RUN=1 python scripts/update-prices.py # preview, no writes
 ```
 
-**A change is not done until all three gates pass:** `npm test` (12), `pytest -q tests/` (57), `npm run build` (clean). CI (`ci.yml`) runs exactly these on push/PR to main.
+**A change is not done until all three gates pass:** `npm test` (40), `pytest -q tests/` (57), `npm run build` (clean). CI (`ci.yml`) runs exactly these on push/PR to main.
 
 ### Environment gotchas (hard-won, don't rediscover)
 
