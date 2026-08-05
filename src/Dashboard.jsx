@@ -189,7 +189,7 @@ export default function Dashboard() {
 
         <GrandLineIndex indexData={indexData} indexLast={indexLast} indexAllTimeChange={indexAllTimeChange} />
 
-        <LiveTape txns={txns} />
+        <LiveTape txns={txns} history={history} selectedSet={selectedSet} />
 
         <DecisionMatrix active={active} selectedSet={selectedSet} setSelectedSet={setSelectedSet} />
 

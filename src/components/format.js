@@ -12,6 +12,12 @@ export const fmtShortChartDate = (ts) => {
   const d = new Date(ts);
   return Number.isFinite(d.getTime()) ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—';
 };
+// Explicit UTC — for contexts that must not drift with the viewer's local
+// zone (e.g. the per-set tape's absolute fill dates), unlike fmtChartDate.
+export const fmtUtcDate = (ts) => {
+  const d = new Date(ts);
+  return Number.isFinite(d.getTime()) ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : '—';
+};
 export const fmtAxisDate = (rows, formatter = fmtShortChartDate) => (value) => {
   const row = rows[Math.max(0, Math.min(rows.length - 1, Math.round(value)))];
   return row ? formatter(row.ts) : '—';

@@ -78,6 +78,57 @@ describe('LiveTape', () => {
     render(<LiveTape txns={undefined} />);
     expect(screen.getByText('LIVE TAPE')).toBeTruthy();
   });
+
+  const history = {
+    'OP-13': [
+      { date: '2026-01-01 10:00:00', price: 100, volume: 2, source: 'tcgplayer latest sale' },
+      { date: '2026-01-02 10:00:00', price: 110, volume: 3, source: 'tcgplayer latest sale' },
+      { date: '2026-01-03 10:00:00', price: 90, volume: 1, source: 'tcgplayer current market' }, // not a fill
+    ],
+  };
+
+  it('ALL SETS mode is the default and renders byte-identical with history/selectedSet also passed', () => {
+    render(<LiveTape txns={txns} history={history} selectedSet="OP-13" />);
+    expect(screen.getAllByText('SOLD')).toHaveLength(30);
+    expect(screen.getByText('Recent fills across major venues')).toBeTruthy();
+  });
+
+  it('switching to SET mode shows every retained fill, newest first, with absolute UTC dates and TYPE/VENUE collapsed to a subheading', () => {
+    render(<LiveTape txns={txns} history={history} selectedSet="OP-13" />);
+    fireEvent.click(screen.getByRole('button', { name: 'OP-13' }));
+    expect(screen.getByText(/2 fills/)).toBeTruthy();           // market-quote row excluded
+    expect(screen.getByText(/Jan 1, 2026 → Jan 2, 2026/)).toBeTruthy();
+    expect(screen.getByText('Jan 1, 2026')).toBeTruthy();
+    expect(screen.getByText('Jan 2, 2026')).toBeTruthy();
+    expect(screen.getAllByText('SOLD')).toHaveLength(1);        // one subheading, not one per row
+    expect(screen.queryByText('VENUE')).toBeNull();
+    expect(screen.queryByText('TYPE')).toBeNull();
+  });
+
+  it('shows a true empty state for a set with no recorded fills', () => {
+    render(<LiveTape txns={txns} history={{}} selectedSet="OP-99" />);
+    fireEvent.click(screen.getByRole('button', { name: 'OP-99' }));
+    expect(screen.getByText('No recorded fills for OP-99')).toBeTruthy();   // subtitle
+    expect(screen.getByText('No recorded fills for OP-99.')).toBeTruthy();  // table body
+  });
+
+  it('caps the rendered rows for a large set and lazily reveals more on scroll, with no full 3k-row DOM', () => {
+    const many = Array.from({ length: 90 }, (_, i) => ({
+      date: `2026-01-${String((i % 28) + 1).padStart(2, '0')} 10:00:00`, price: 100 + i, volume: 1, source: 'tcgplayer latest sale',
+    }));
+    const { container } = render(<LiveTape txns={txns} history={{ 'OP-13': many }} selectedSet="OP-13" />);
+    fireEvent.click(screen.getByRole('button', { name: 'OP-13' }));
+    expect(container.querySelectorAll('tbody tr')).toHaveLength(60);   // PAGE_SIZE, not 90
+    expect(screen.getByText(/Showing 60 of 90/)).toBeTruthy();
+
+    const scrollEl = screen.getByTestId('tape-scroll');
+    Object.defineProperty(scrollEl, 'scrollHeight', { value: 1000, configurable: true });
+    Object.defineProperty(scrollEl, 'clientHeight', { value: 340, configurable: true });
+    Object.defineProperty(scrollEl, 'scrollTop', { value: 1000, configurable: true });
+    fireEvent.scroll(scrollEl);
+    expect(container.querySelectorAll('tbody tr')).toHaveLength(90);
+    expect(screen.queryByText(/Showing/)).toBeNull();   // fully caught up, message drops
+  });
 });
 
 describe('MarketPulse', () => {
