@@ -31,9 +31,24 @@ function PriceVolumeTooltip({ active, payload, label }) {
   );
 }
 
-export default function PriceChartSection({ selected, chartData, selectedFirst, selectedLast, selectedAllTimeChange, timeframe, setTimeframe, timeframeBuckets }) {
+export default function PriceChartSection({ selected, chartData, selectedFirst, selectedLast, selectedAllTimeChange, windowStats, timeframe, setTimeframe, timeframeBuckets }) {
   const activeBucket = timeframeBuckets?.find(b => b.days === timeframe);
   const windowLabel = activeBucket ? activeBucket.label : 'ALL';
+
+  // ALL (timeframe === null) renders exactly what shipped before ey9.4 —
+  // persisted 30d change / 52w range / 30d volume. A window selected swaps
+  // in windowStats' figures and every label names the active window instead.
+  const isWindowed = timeframe !== null;
+  const changeLabel = isWindowed ? `${windowLabel} change` : '30d change';
+  const changePct = isWindowed ? windowStats.windowChange : selected.change30d;
+  const changeAbs = isWindowed
+    ? Math.abs((windowStats.last?.price ?? selected.price) - (windowStats.first?.price ?? selected.price))
+    : Math.abs(selected.price - (selected.prev || selected.price));
+  const rangeLabel = isWindowed ? windowLabel : '52w';
+  const rangeHigh = isWindowed ? windowStats.windowHigh : selected.high52w;
+  const rangeLow = isWindowed ? windowStats.windowLow : selected.low52w;
+  const volLabel = isWindowed ? windowLabel : '30d';
+  const volValue = isWindowed ? windowStats.windowVolume : selected.volume30d;
   return (
     <section style={{ marginBottom: 24, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 360px', gap: 16 }}>
       <div style={{ background: t.bgSecondary, border: `1px solid ${t.border}`, padding: 20, minWidth: 0 }}>
@@ -54,10 +69,10 @@ export default function PriceChartSection({ selected, chartData, selectedFirst, 
           </div>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 32, fontWeight: 700, color: t.textBright, letterSpacing: -0.5 }}>{fmt$(selected.price)}</div>
-            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 14, fontWeight: 600, color: selected.change30d >= 0 ? t.buy : t.sell }}>
-              {selected.change30d >= 0 ? '▲' : '▼'} {fmt$(Math.abs(selected.price - (selected.prev || selected.price)))} ({fmtPct(selected.change30d)})
+            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 14, fontWeight: 600, color: changePct >= 0 ? t.buy : t.sell }}>
+              {changePct >= 0 ? '▲' : '▼'} {fmt$(changeAbs)} ({fmtPct(changePct)})
             </div>
-            <div style={{ fontSize: 10, color: t.textDim, fontFamily: 'JetBrains Mono, monospace', marginTop: 4 }}>30d change</div>
+            <div style={{ fontSize: 10, color: t.textDim, fontFamily: 'JetBrains Mono, monospace', marginTop: 4 }}>{changeLabel}</div>
           </div>
         </div>
 
@@ -113,23 +128,25 @@ export default function PriceChartSection({ selected, chartData, selectedFirst, 
         <div>
           <div style={{ fontSize: 10, color: t.textDim, letterSpacing: 1.5, fontFamily: 'JetBrains Mono, monospace', marginBottom: 8 }}>RANGE</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <DataRow label="52w High" value={fmt$(selected.high52w)} />
-            <DataRow label="52w Low" value={fmt$(selected.low52w)} />
-            <DataRow label="From High" value={selected.high52w ? fmtPct((selected.price - selected.high52w) / selected.high52w * 100) : '—'} color={t.sell} />
-            <DataRow label="From Low" value={selected.low52w ? fmtPct((selected.price - selected.low52w) / selected.low52w * 100) : '—'} color={t.buy} />
+            <DataRow label={`${rangeLabel} High`} value={fmt$(rangeHigh)} />
+            <DataRow label={`${rangeLabel} Low`} value={fmt$(rangeLow)} />
+            <DataRow label="From High" value={rangeHigh ? fmtPct((selected.price - rangeHigh) / rangeHigh * 100) : '—'} color={t.sell} />
+            <DataRow label="From Low" value={rangeLow ? fmtPct((selected.price - rangeLow) / rangeLow * 100) : '—'} color={t.buy} />
           </div>
         </div>
         <div>
           <div style={{ fontSize: 10, color: t.textDim, letterSpacing: 1.5, fontFamily: 'JetBrains Mono, monospace', marginBottom: 8 }}>VOLUME & LIQUIDITY</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <DataRow label="30d Vol" value={fmtNum(selected.volume30d)} />
-            <DataRow label="7d Sold" value={fmtNum(selected.soldLast7d)} />
+            <DataRow label={`${volLabel} Vol`} value={fmtNum(volValue)} />
+            <DataRow label={isWindowed ? 'Fills' : '7d Sold'} value={fmtNum(isWindowed ? windowStats.windowSales : selected.soldLast7d)} />
             <DataRow label="Listings" value={fmtNum(selected.listings)} />
-            <DataRow label="Vs MSRP" value={selected.price ? fmtPct((selected.price - selected.msrp) / selected.msrp * 100) : '—'} color={t.accent} />
+            {isWindowed
+              ? <DataRow label="VWAP" value={fmt$(windowStats.vwap)} color={t.accent} />
+              : <DataRow label="Vs MSRP" value={selected.price ? fmtPct((selected.price - selected.msrp) / selected.msrp * 100) : '—'} color={t.accent} />}
           </div>
         </div>
         <div>
-          <div style={{ fontSize: 10, color: t.textDim, letterSpacing: 1.5, fontFamily: 'JetBrains Mono, monospace', marginBottom: 8 }}>TECHNICAL</div>
+          <div style={{ fontSize: 10, color: t.textDim, letterSpacing: 1.5, fontFamily: 'JetBrains Mono, monospace', marginBottom: 8 }}>TECHNICAL — ALL-TIME</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
             <span style={{ fontSize: 11, color: t.textDim, fontFamily: 'JetBrains Mono, monospace', minWidth: 40 }}>RSI</span>
             <div style={{ flex: 1, height: 6, background: t.bgTertiary, position: 'relative' }}>

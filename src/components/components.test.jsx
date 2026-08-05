@@ -109,6 +109,12 @@ describe('PriceChartSection', () => {
     { label: '1Y', days: 365, disabled: true },
     { label: 'ALL', days: null, disabled: false },
   ];
+  // Only read by the component when timeframe !== null (isWindowed).
+  const windowStats7d = {
+    windowChange: 9.375, windowHigh: 190, windowLow: 160,
+    windowVolume: 20, windowSales: 3, vwap: 175.5,
+    first: { price: 160 }, last: { price: 175 },
+  };
 
   it('clicking an enabled bucket reports the chosen window; disabled buckets are greyed out but still rendered', () => {
     const setTimeframe = vi.fn();
@@ -131,8 +137,45 @@ describe('PriceChartSection', () => {
     const windowed = [chartData[1]];
     rerender(<PriceChartSection selected={selected} chartData={windowed}
       selectedFirst={windowed[0]} selectedLast={windowed[0]} selectedAllTimeChange={5.9}
+      windowStats={windowStats7d}
       timeframe={7} setTimeframe={() => {}} timeframeBuckets={timeframeBuckets} />);
     expect(screen.getByText(/7D window/)).toBeTruthy();
+  });
+
+  it('ALL shows the persisted 30d change / 52w range / 30d volume figures untouched', () => {
+    render(<PriceChartSection selected={selected} chartData={chartData}
+      selectedFirst={chartData[0]} selectedLast={chartData[1]} selectedAllTimeChange={5.9}
+      timeframe={null} setTimeframe={() => {}} timeframeBuckets={timeframeBuckets} />);
+    expect(screen.getByText('30d change')).toBeTruthy();
+    expect(screen.getByText(/\+6\.50%/)).toBeTruthy();     // selected.change30d
+    expect(screen.getByText('52w High')).toBeTruthy();
+    expect(screen.getByText('52w Low')).toBeTruthy();
+    expect(screen.getByText('30d Vol')).toBeTruthy();
+    expect(screen.getByText('7d Sold')).toBeTruthy();
+    expect(screen.getByText('Vs MSRP')).toBeTruthy();
+    expect(screen.getByText('TECHNICAL — ALL-TIME')).toBeTruthy();
+  });
+
+  it('a window active swaps delta/range/volume to windowStats and labels name the window', () => {
+    render(<PriceChartSection selected={selected} chartData={[chartData[1]]}
+      selectedFirst={chartData[1]} selectedLast={chartData[1]} selectedAllTimeChange={5.9}
+      windowStats={windowStats7d}
+      timeframe={7} setTimeframe={() => {}} timeframeBuckets={timeframeBuckets} />);
+    expect(screen.getByText('7D change')).toBeTruthy();
+    expect(screen.getByText(/\+9\.38%/)).toBeTruthy();      // windowChange 9.375 -> toFixed(2)
+    expect(screen.getByText(/\$15\b/)).toBeTruthy();        // |175 - 160|
+    expect(screen.getByText('7D High')).toBeTruthy();
+    expect(screen.getByText('$190')).toBeTruthy();
+    expect(screen.getByText('7D Low')).toBeTruthy();
+    expect(screen.getByText('$160')).toBeTruthy();
+    expect(screen.getByText('7D Vol')).toBeTruthy();
+    expect(screen.getByText('20')).toBeTruthy();
+    expect(screen.getByText('Fills')).toBeTruthy();
+    expect(screen.getByText('3')).toBeTruthy();
+    expect(screen.getByText('VWAP')).toBeTruthy();
+    expect(screen.getByText('$176')).toBeTruthy();          // vwap 175.5 -> Math.round
+    expect(screen.queryByText('Vs MSRP')).toBeNull();
+    expect(screen.getByText('TECHNICAL — ALL-TIME')).toBeTruthy();
   });
 });
 

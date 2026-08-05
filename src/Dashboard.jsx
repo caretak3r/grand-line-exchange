@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import SET_METADATA from './data/sets.json';
-import { buildChartData, sliceWindow, buildIndexData, computeMarketStats, pctChange } from './lib/analytics.js';
+import { buildChartData, sliceWindow, buildIndexData, computeMarketStats, computeWindowStats, pctChange } from './lib/analytics.js';
 import { t } from './components/theme.js';
 import { LoadingScreen, ErrorScreen } from './components/StatusScreens.jsx';
 import HeaderBar from './components/HeaderBar.jsx';
@@ -95,11 +95,16 @@ export default function Dashboard() {
   // before buildChartData — MAs need the full series to compute correctly.
   const chartData = useMemo(() => buildChartData(selectedHistory), [selectedHistory]);
   const windowedChartData = useMemo(() => sliceWindow(chartData, timeframe), [chartData, timeframe]);
-  const windowFirst = windowedChartData[0];
-  const windowLast = windowedChartData[windowedChartData.length - 1];
+
+  // Single derivation of the active window's metrics — PriceChartSection
+  // reads windowStats.first/last for its header bounds and windowChange/
+  // windowHigh/windowLow/windowVolume/windowSales/vwap for the window-scoped
+  // panels. Nothing downstream recomputes these.
+  const windowStats = useMemo(() => computeWindowStats(windowedChartData), [windowedChartData]);
 
   // All-time change stays anchored to the full series regardless of the
-  // active timeframe — the windowed delta is a separate figure (ey9.4).
+  // active timeframe — it's the footer's "All-time Δ" figure, distinct from
+  // windowStats.windowChange which describes only the active window.
   const allTimeFirst = chartData[0];
   const allTimeLast = chartData[chartData.length - 1];
   const selectedAllTimeChange = allTimeFirst && allTimeLast ? pctChange(allTimeFirst.price, allTimeLast.price) : 0;
@@ -169,8 +174,8 @@ export default function Dashboard() {
 
         {selected && (
           <PriceChartSection selected={selected} chartData={windowedChartData}
-            selectedFirst={windowFirst} selectedLast={windowLast}
-            selectedAllTimeChange={selectedAllTimeChange}
+            selectedFirst={windowStats.first} selectedLast={windowStats.last}
+            selectedAllTimeChange={selectedAllTimeChange} windowStats={windowStats}
             timeframe={timeframe} setTimeframe={setTimeframe} timeframeBuckets={timeframeBuckets} />
         )}
 

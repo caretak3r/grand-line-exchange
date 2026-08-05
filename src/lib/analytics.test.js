@@ -6,6 +6,7 @@ import {
   sliceWindow,
   buildIndexData,
   computeMarketStats,
+  computeWindowStats,
   buildTape,
 } from './analytics.js';
 
@@ -189,6 +190,55 @@ describe('computeMarketStats', () => {
     const s = computeMarketStats(sets);
     expect(s.topGainers.map(x => x.change30d)).toEqual([5, 0, -3]);
     expect(s.topLosers.map(x => x.change30d)).toEqual([-3, 0, 5]);
+  });
+});
+
+describe('computeWindowStats', () => {
+  // Prices [100, 120, 90, 150]; only rows 1 and 2 are real fills (source
+  // 'tcgplayer latest sale'), rows 0 and 3 are current-market snapshots.
+  const rows = [
+    { ts: 0, price: 100, volume: 1, source: 'tcgplayer current market' },
+    { ts: 1, price: 120, volume: 2, source: 'tcgplayer latest sale' },
+    { ts: 2, price: 90, volume: 3, source: 'tcgplayer latest sale' },
+    { ts: 3, price: 150, volume: 1, source: 'tcgplayer current market' },
+  ];
+
+  it('returns a zeroed shape for an empty window', () => {
+    expect(computeWindowStats([])).toEqual({
+      windowChange: 0, windowHigh: null, windowLow: null,
+      windowVolume: 0, windowSales: 0, vwap: null, first: null, last: null,
+    });
+  });
+
+  it('computes change/high/low across the whole window, volume/vwap/sales from fills only', () => {
+    const s = computeWindowStats(rows);
+    // windowChange = (150 - 100) / 100 * 100 = 50
+    expect(s.windowChange).toBe(50);
+    // windowHigh/windowLow span every row, snapshots included: max/min of [100,120,90,150]
+    expect(s.windowHigh).toBe(150);
+    expect(s.windowLow).toBe(90);
+    // fills only: volumes 2 + 3 = 5
+    expect(s.windowVolume).toBe(5);
+    expect(s.windowSales).toBe(2);
+    // vwap = (120*2 + 90*3) / (2+3) = (240 + 270) / 5 = 102
+    expect(s.vwap).toBe(102);
+    expect(s.first).toBe(rows[0]);
+    expect(s.last).toBe(rows[3]);
+  });
+
+  it('vwap is null when the window has no fills, but change/high/low still compute', () => {
+    const quotesOnly = [
+      { ts: 0, price: 100, volume: 1, source: 'tcgplayer current market' },
+      { ts: 1, price: 80, volume: 1, source: 'tcgplayer current market' },
+    ];
+    const s = computeWindowStats(quotesOnly);
+    expect(s.vwap).toBeNull();
+    expect(s.windowVolume).toBe(0);
+    expect(s.windowSales).toBe(0);
+    // windowChange = (80 - 100) / 100 * 100 = -20
+    expect(s.windowChange).toBe(-20);
+    expect(s.windowHigh).toBe(100);
+    expect(s.windowLow).toBe(80);
   });
 });
 

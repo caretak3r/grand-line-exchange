@@ -122,6 +122,34 @@ export function computeMarketStats(sets) {
   return { active, totalCap, totalVol, avgChange, gainers, losers, buys, topGainers, topLosers };
 }
 
+// Window-scoped metrics for the chart's active timeframe. `rows` is the
+// output of sliceWindow(buildChartData(...)) — every row already carries
+// price/volume/source/ts. Only 'tcgplayer latest sale' rows are real fills;
+// 'tcgplayer current market' snapshots carry a placeholder volume (same rule
+// buildTape() uses) and are excluded from volume/vwap/fill-count so a quote
+// row never gets counted as a sale.
+export function computeWindowStats(rows) {
+  if (!rows.length) {
+    return { windowChange: 0, windowHigh: null, windowLow: null, windowVolume: 0, windowSales: 0, vwap: null, first: null, last: null };
+  }
+  const first = rows[0];
+  const last = rows[rows.length - 1];
+  const prices = rows.map(r => r.price);
+  const sales = rows.filter(r => r.source === 'tcgplayer latest sale');
+  const saleVolume = sales.reduce((sum, r) => sum + (r.volume || 0), 0);
+  const saleValue = sales.reduce((sum, r) => sum + r.price * (r.volume || 0), 0);
+  return {
+    windowChange: pctChange(first.price, last.price),
+    windowHigh: Math.max(...prices),
+    windowLow: Math.min(...prices),
+    windowVolume: saleVolume,
+    windowSales: sales.length,
+    vwap: saleVolume ? Math.round((saleValue / saleVolume) * 100) / 100 : null,
+    first,
+    last,
+  };
+}
+
 // Every recorded fill for one set, newest first. Fills are history rows
 // written by the 'tcgplayer latest sale' source; 'tcgplayer current market'
 // snapshots and 'release date' anchors aren't sales and are excluded. History
