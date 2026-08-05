@@ -6,6 +6,7 @@ import {
   sliceWindow,
   buildIndexData,
   computeMarketStats,
+  buildTape,
 } from './analytics.js';
 
 // Day-bucketing asserts UTC calendar days; the `test` script pins TZ=UTC so
@@ -188,5 +189,75 @@ describe('computeMarketStats', () => {
     const s = computeMarketStats(sets);
     expect(s.topGainers.map(x => x.change30d)).toEqual([5, 0, -3]);
     expect(s.topLosers.map(x => x.change30d)).toEqual([-3, 0, 5]);
+  });
+});
+
+describe('buildTape', () => {
+  // Index in this array is preserved as the id tiebreaker, so it matters:
+  // 0: fill                              -> kept
+  // 1: current-market snapshot           -> dropped (not a fill)
+  // 2: fill but price 0                  -> dropped
+  // 3: fill but unparseable date         -> dropped
+  // 4: release-date anchor               -> dropped (not a fill)
+  // 5: fill                              -> kept
+  // 6: fill, same date+price+volume as 7 -> kept (real duplicate)
+  // 7: fill, same date+price+volume as 6 -> kept (real duplicate)
+  const history = {
+    OP01: [
+      { date: '2026-01-01 10:00:00', price: 100, volume: 2, source: 'tcgplayer latest sale' },
+      { date: '2026-01-02 10:00:00', price: 110, volume: 1, source: 'tcgplayer current market' },
+      { date: '2026-01-03 10:00:00', price: 0, volume: 5, source: 'tcgplayer latest sale' },
+      { date: 'garbage', price: 90, volume: 3, source: 'tcgplayer latest sale' },
+      { date: '2026-01-01 09:00:00', price: 95, volume: 1, source: 'release date' },
+      { date: '2026-01-04 10:00:00', price: 120, volume: 4, source: 'tcgplayer latest sale' },
+      { date: '2026-01-05 10:00:00', price: 130, volume: 2, source: 'tcgplayer latest sale' },
+      { date: '2026-01-05 10:00:00', price: 130, volume: 2, source: 'tcgplayer latest sale' },
+    ],
+    OP02: [{ date: '2026-01-01 10:00:00', price: 50, volume: 1, source: 'tcgplayer current market' }],
+  };
+
+  it('returns [] for an unknown code, a set with no sale rows, and null/undefined history', () => {
+    expect(buildTape(history, 'NOPE')).toEqual([]);
+    expect(buildTape(history, 'OP02')).toEqual([]);
+    expect(buildTape({ OP03: [] }, 'OP03')).toEqual([]);
+    expect(buildTape(null, 'OP01')).toEqual([]);
+    expect(buildTape(undefined, 'OP01')).toEqual([]);
+  });
+
+  it('keeps only latest-sale rows with positive price and a parseable date, newest first', () => {
+    const out = buildTape(history, 'OP01');
+    // 8 rows in -> excluded: 1 (current market), 2 (price 0), 3 (bad date),
+    // 4 (release date) = 4 excluded, 4 fills remain: rows 0, 5, 6, 7
+    expect(out).toHaveLength(4);
+    expect(out.map(r => r.price)).toEqual([130, 130, 120, 100]);
+    expect(out.map(r => r.ts)).toEqual([...out.map(r => r.ts)].sort((a, b) => b - a));
+  });
+
+  it('maps history fields to tape fields with synthesized venue/type', () => {
+    const out = buildTape(history, 'OP01');
+    const oldest = out[3]; // row 0: 2026-01-01 10:00:00, 100, qty 2
+    expect(oldest).toEqual({
+      id: 'OP01-2026-01-01 10:00:00-100-2-0',
+      ts: Date.parse('2026-01-01T10:00:00'),
+      timestamp: '2026-01-01 10:00:00',
+      price: 100,
+      qty: 2,
+      venue: 'TCGPlayer',
+      type: 'SOLD',
+    });
+  });
+
+  it('retains both duplicate-timestamp fills with distinct ids', () => {
+    const out = buildTape(history, 'OP01');
+    // rows 6 and 7 share date/price/volume; the index suffix disambiguates
+    // and stable-sort keeps their original relative order among the tie
+    const [first, second] = out;
+    expect(first.timestamp).toBe('2026-01-05 10:00:00');
+    expect(second.timestamp).toBe('2026-01-05 10:00:00');
+    expect(first.price).toBe(130);
+    expect(second.price).toBe(130);
+    expect(first.id).toBe('OP01-2026-01-05 10:00:00-130-2-6');
+    expect(second.id).toBe('OP01-2026-01-05 10:00:00-130-2-7');
+    expect(first.id).not.toBe(second.id);
   });
 });

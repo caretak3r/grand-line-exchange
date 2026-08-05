@@ -121,3 +121,26 @@ export function computeMarketStats(sets) {
   const topLosers = [...active].sort((a, b) => a.change30d - b.change30d).slice(0, 5);
   return { active, totalCap, totalVol, avgChange, gainers, losers, buys, topGainers, topLosers };
 }
+
+// Every recorded fill for one set, newest first. Fills are history rows
+// written by the 'tcgplayer latest sale' source; 'tcgplayer current market'
+// snapshots and 'release date' anchors aren't sales and are excluded. History
+// carries no venue/type/id (only one source has ever existed) so those are
+// synthesized here; the id's index suffix is a React-key tiebreaker only —
+// (date, price, volume) genuinely collides on same-minute duplicate fills.
+export function buildTape(history, code) {
+  const rows = history?.[code] || [];
+  return rows
+    .map((row, i) => ({ ...row, ts: parseChartTime(row.date), i }))
+    .filter(row => row.ts && row.price > 0 && row.source === 'tcgplayer latest sale')
+    .map(row => ({
+      id: `${code}-${row.date}-${row.price}-${row.volume}-${row.i}`,
+      ts: row.ts,
+      timestamp: row.date,
+      price: row.price,
+      qty: row.volume,
+      venue: 'TCGPlayer',
+      type: 'SOLD',
+    }))
+    .sort((a, b) => b.ts - a.ts);
+}
