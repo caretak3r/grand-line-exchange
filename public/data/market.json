@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-08-04T23:17:02.288056+00:00",
+  "updatedAt": "2026-08-05T03:28:45.082557+00:00",
   "source": "tcgplayer",
   "fetched": 23,
   "kept": 0,
@@ -13,14 +13,14 @@
       "volume30d": 0,
       "soldLast7d": 0,
       "listings": 16,
-      "bid": 4654.04,
-      "ask": 4898.99,
+      "bid": 4653.1,
+      "ask": 4898.0,
       "spread": 5.1,
       "rsi": 12,
       "momentum": "bearish",
       "signal": "WATCH",
       "stale": false,
-      "lastUpdated": "2026-08-04T23:16:34.913530+00:00"
+      "lastUpdated": "2026-08-05T03:28:18.269539+00:00"
     },
     "OP-01-W2": {
       "price": 1551.52,
@@ -38,7 +38,7 @@
       "momentum": "bearish",
       "signal": "WATCH",
       "stale": false,
-      "lastUpdated": "2026-08-04T23:16:36.084504+00:00"
+      "lastUpdated": "2026-08-05T03:28:19.695729+00:00"
     },
     "OP-02": {
       "price": 605.01,
@@ -56,7 +56,7 @@
       "momentum": "neutral",
       "signal": "HOLD",
       "stale": false,
-      "lastUpdated": "2026-08-04T23:16:37.195656+00:00"
+      "lastUpdated": "2026-08-05T03:28:20.964007+00:00"
     },
     "OP-03": {
       "price": 543.18,
@@ -74,7 +74,7 @@
       "momentum": "neutral",
       "signal": "BUY",
       "stale": false,
-      "lastUpdated": "2026-08-04T23:16:38.358947+00:00"
+      "lastUpdated": "2026-08-05T03:28:22.267242+00:00"
     },
     "OP-04": {
       "price": 504.0,
@@ -92,7 +92,7 @@
       "momentum": "neutral",
       "signal": "HOLD",
       "stale": false,
-      "lastUpdated": "2026-08-04T23:16:39.501630+00:00"
+      "lastUpdated": "2026-08-05T03:28:23.532676+00:00"
     },
     "OP-05": {
       "price": 1170.19,
@@ -110,7 +110,7 @@
       "momentum": "neutral",
       "signal": "HOLD",
       "stale": false,
-      "lastUpdated": "2026-08-04T23:16:40.859281+00:00"
+      "lastUpdated": "2026-08-05T03:28:24.720788+00:00"
     },
     "OP-06": {
       "price": 382.09,
@@ -128,7 +128,7 @@
       "momentum": "neutral",
       "signal": "HOLD",
       "stale": false,
-      "lastUpdated": "2026-08-04T23:16:42.449827+00:00"
+      "lastUpdated": "2026-08-05T03:28:25.967741+00:00"
     },
     "OP-07": {
       "price": 347.14,
@@ -146,7 +146,7 @@
       "momentum": "neutral",
       "signal": "HOLD",
       "stale": false,
-      "lastUpdated": "2026-08-04T23:16:43.831913+00:00"
+      "lastUpdated": "2026-08-05T03:28:27.094571+00:00"
     },
     "OP-08": {
       "price": 245.94,
@@ -154,17 +154,17 @@
       "change30d": 3.4,
       "high52w": 299.99,
       "low52w": 159.99,
-      "volume30d": 22,
-      "soldLast7d": 2,
+      "volume30d": 23,
+      "soldLast7d": 3,
       "listings": 30,
-      "bid": 233.64,
-      "ask": 253.0,
-      "spread": 8.0,
+      "bid": 230.86,
+      "ask": 243.01,
+      "spread": 5.1,
       "rsi": 68,
       "momentum": "neutral",
       "signal": "BUY",
       "stale": false,
-      "lastUpdated": "2026-08-04T23:16:44.924749+00:00"
+      "lastUpdated": "2026-08-05T03:28:28.295101+00:00"
     },
     "OP-09": {
       "price": 663.09,
@@ -182,43 +182,43 @@
       "momentum": "bearish",
       "signal": "HOLD",
       "stale": false,
-      "lastUpdated": "2026-08-04T23:16:46.150695+00:00"
+      "lastUpdated": "2026-08-05T03:28:29.454748+00:00"
     },
     "OP-10": {
-      "price": 241.57,
+      "price": 241.76,
       "prev": 241.57,
-      "change30d": -1.3,
+      "change30d": -1.2,
       "high52w": 294.98,
       "low52w": 215.0,
-      "volume30d": 43,
-      "soldLast7d": 12,
-      "listings": 39,
-      "bid": 229.49,
+      "volume30d": 46,
+      "soldLast7d": 14,
+      "listings": 37,
+      "bid": 229.67,
       "ask": 243.89,
-      "spread": 6.1,
-      "rsi": 54,
+      "spread": 6.0,
+      "rsi": 56,
       "momentum": "neutral",
       "signal": "HOLD",
       "stale": false,
-      "lastUpdated": "2026-08-04T23:16:47.454252+00:00"
+      "lastUpdated": "2026-08-05T03:28:30.576917+00:00"
     },
     "OP-11": {
       "price": 653.22,
       "prev": 653.22,
-      "change30d": 35.3,
+      "change30d": 18.8,
       "high52w": 709.99,
       "low52w": 240.98,
-      "volume30d": 58,
+      "volume30d": 53,
       "soldLast7d": 11,
-      "listings": 25,
-      "bid": 579.46,
-      "ask": 609.96,
+      "listings": 26,
+      "bid": 568.1,
+      "ask": 598.0,
       "spread": 5.1,
       "rsi": 95,
       "momentum": "bullish",
       "signal": "BUY",
       "stale": false,
-      "lastUpdated": "2026-08-04T23:16:48.625178+00:00"
+      "lastUpdated": "2026-08-05T03:28:31.771806+00:00"
     },
     "OP-12": {
       "price": 274.21,
@@ -228,7 +228,7 @@
       "low52w": 234.99,
       "volume30d": 54,
       "soldLast7d": 10,
-      "listings": 33,
+      "listings": 30,
       "bid": 260.5,
       "ask": 278.94,
       "spread": 6.8,
@@ -236,25 +236,25 @@
       "momentum": "neutral",
       "signal": "HOLD",
       "stale": false,
-      "lastUpdated": "2026-08-04T23:16:49.750408+00:00"
+      "lastUpdated": "2026-08-05T03:28:33.079859+00:00"
     },
     "OP-13": {
-      "price": 457.51,
-      "prev": 459.21,
-      "change30d": 2.5,
+      "price": 456.83,
+      "prev": 457.51,
+      "change30d": -0.5,
       "high52w": 750.0,
       "low52w": 56.99,
-      "volume30d": 1326,
-      "soldLast7d": 200,
-      "listings": 64,
-      "bid": 394.25,
-      "ask": 415.0,
+      "volume30d": 1327,
+      "soldLast7d": 188,
+      "listings": 62,
+      "bid": 429.88,
+      "ask": 452.5,
       "spread": 5.1,
       "rsi": 65,
       "momentum": "neutral",
       "signal": "HOLD",
       "stale": false,
-      "lastUpdated": "2026-08-04T23:16:50.984538+00:00"
+      "lastUpdated": "2026-08-05T03:28:34.219458+00:00"
     },
     "OP-14": {
       "price": 269.61,
@@ -263,70 +263,70 @@
       "high52w": 357.18,
       "low52w": 221.99,
       "volume30d": 137,
-      "soldLast7d": 21,
-      "listings": 40,
-      "bid": 251.51,
-      "ask": 264.75,
+      "soldLast7d": 19,
+      "listings": 41,
+      "bid": 242.25,
+      "ask": 255.0,
       "spread": 5.1,
       "rsi": 67,
       "momentum": "bullish",
       "signal": "BUY",
       "stale": false,
-      "lastUpdated": "2026-08-04T23:16:52.248588+00:00"
+      "lastUpdated": "2026-08-05T03:28:35.313569+00:00"
     },
     "OP-15": {
-      "price": 250.26,
+      "price": 250.24,
       "prev": 250.26,
-      "change30d": 1.2,
+      "change30d": -10.3,
       "high52w": 334.08,
       "low52w": 42.99,
-      "volume30d": 244,
-      "soldLast7d": 59,
-      "listings": 35,
-      "bid": 237.75,
+      "volume30d": 249,
+      "soldLast7d": 64,
+      "listings": 33,
+      "bid": 237.73,
       "ask": 251.75,
       "spread": 5.7,
       "rsi": 53,
-      "momentum": "neutral",
-      "signal": "HOLD",
+      "momentum": "bearish",
+      "signal": "WATCH",
       "stale": false,
-      "lastUpdated": "2026-08-04T23:16:53.600485+00:00"
+      "lastUpdated": "2026-08-05T03:28:36.452871+00:00"
     },
     "OP-16": {
-      "price": 208.21,
-      "prev": 208.1,
-      "change30d": 4.0,
+      "price": 208.56,
+      "prev": 208.21,
+      "change30d": 1.8,
       "high52w": 315.99,
       "low52w": 134.95,
       "volume30d": 1349,
-      "soldLast7d": 194,
+      "soldLast7d": 184,
       "listings": 51,
-      "bid": 197.8,
-      "ask": 208.87,
-      "spread": 5.4,
+      "bid": 198.13,
+      "ask": 208.85,
+      "spread": 5.3,
       "rsi": 57,
       "momentum": "neutral",
-      "signal": "BUY",
+      "signal": "HOLD",
       "stale": false,
-      "lastUpdated": "2026-08-04T23:16:54.888468+00:00"
+      "lastUpdated": "2026-08-05T03:28:37.666908+00:00"
     },
     "OP-17": {
-      "price": 423.6,
-      "prev": 426.4,
+      "price": 410.64,
+      "prev": 423.6,
       "change30d": 0,
-      "high52w": 449.95,
-      "low52w": 411.85,
-      "volume30d": 27,
-      "soldLast7d": 27,
-      "listings": 17,
-      "bid": 384.75,
-      "ask": 405.0,
+      "high52w": 511.85,
+      "low52w": 403.99,
+      "volume30d": 33,
+      "soldLast7d": 33,
+      "listings": 19,
+      "bid": 370.49,
+      "ask": 389.99,
       "spread": 5.1,
       "rsi": 50,
       "momentum": "neutral",
       "signal": "PREORDER",
       "stale": false,
-      "lastUpdated": "2026-08-04T23:16:56.170097+00:00"
+      "lastUpdated": "2026-08-05T03:28:38.823791+00:00"
     },
     "EB-01": {
       "price": 865.89,
@@ -336,7 +336,7 @@
       "low52w": 814.21,
       "volume30d": 3,
       "soldLast7d": 0,
-      "listings": 10,
+      "listings": 9,
       "bid": 822.6,
       "ask": 900.0,
       "spread": 9.0,
@@ -344,7 +344,7 @@
       "momentum": "neutral",
       "signal": "HOLD",
       "stale": false,
-      "lastUpdated": "2026-08-04T23:16:57.444103+00:00"
+      "lastUpdated": "2026-08-05T03:28:40.032170+00:00"
     },
     "EB-02": {
       "price": 806.39,
@@ -354,7 +354,7 @@
       "low52w": 445.0,
       "volume30d": 17,
       "soldLast7d": 0,
-      "listings": 21,
+      "listings": 20,
       "bid": 766.07,
       "ask": 860.0,
       "spread": 11.6,
@@ -362,7 +362,7 @@
       "momentum": "bullish",
       "signal": "BUY",
       "stale": false,
-      "lastUpdated": "2026-08-04T23:16:58.653484+00:00"
+      "lastUpdated": "2026-08-05T03:28:41.302650+00:00"
     },
     "EB-03": {
       "price": 328.05,
@@ -371,16 +371,16 @@
       "high52w": 486.99,
       "low52w": 44.49,
       "volume30d": 295,
-      "soldLast7d": 65,
-      "listings": 48,
-      "bid": 311.65,
-      "ask": 329.82,
-      "spread": 5.7,
+      "soldLast7d": 64,
+      "listings": 49,
+      "bid": 304.0,
+      "ask": 320.0,
+      "spread": 5.1,
       "rsi": 75,
       "momentum": "bullish",
       "signal": "BUY",
       "stale": false,
-      "lastUpdated": "2026-08-04T23:16:59.903314+00:00"
+      "lastUpdated": "2026-08-05T03:28:42.607004+00:00"
     },
     "PRB-01": {
       "price": 932.33,
@@ -389,7 +389,7 @@
       "high52w": 1099.99,
       "low52w": 830.0,
       "volume30d": 19,
-      "soldLast7d": 6,
+      "soldLast7d": 5,
       "listings": 17,
       "bid": 843.6,
       "ask": 888.0,
@@ -398,17 +398,17 @@
       "momentum": "neutral",
       "signal": "HOLD",
       "stale": false,
-      "lastUpdated": "2026-08-04T23:17:01.109736+00:00"
+      "lastUpdated": "2026-08-05T03:28:43.856817+00:00"
     },
     "PRB-02": {
       "price": 394.64,
       "prev": 394.64,
-      "change30d": -0.4,
+      "change30d": -1.1,
       "high52w": 409.98,
       "low52w": 231.98,
-      "volume30d": 39,
+      "volume30d": 38,
       "soldLast7d": 13,
-      "listings": 38,
+      "listings": 39,
       "bid": 365.75,
       "ask": 385.0,
       "spread": 5.1,
@@ -416,7 +416,7 @@
       "momentum": "neutral",
       "signal": "WATCH",
       "stale": false,
-      "lastUpdated": "2026-08-04T23:17:02.287931+00:00"
+      "lastUpdated": "2026-08-05T03:28:45.082394+00:00"
     }
   }
 }
