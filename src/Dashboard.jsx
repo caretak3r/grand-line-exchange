@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import SET_METADATA from './data/sets.json';
-import { buildChartData, buildIndexData, computeMarketStats, pctChange } from './lib/analytics.js';
+import { buildChartData, sliceWindow, buildIndexData, computeMarketStats, pctChange } from './lib/analytics.js';
 import { t } from './components/theme.js';
 import { LoadingScreen, ErrorScreen } from './components/StatusScreens.jsx';
 import HeaderBar from './components/HeaderBar.jsx';
@@ -9,6 +9,7 @@ import Ticker from './components/Ticker.jsx';
 import MarketPulse from './components/MarketPulse.jsx';
 import MoversPanel from './components/MoversPanel.jsx';
 import PriceChartSection from './components/PriceChartSection.jsx';
+import { TIMEFRAME_WINDOWS } from './components/TimeframeSelector.jsx';
 import OrderBook from './components/OrderBook.jsx';
 import GrandLineIndex from './components/GrandLineIndex.jsx';
 import LiveTape from './components/LiveTape.jsx';
@@ -42,6 +43,7 @@ function useMarketData() {
 export default function Dashboard() {
   const { loading, error, market, history, txns, reload } = useMarketData();
   const [selectedSet, setSelectedSet] = useState('OP-13');
+  const [timeframe, setTimeframe] = useState(null); // null = ALL
   const [sortKey, setSortKey] = useState('change30d');
   const [sortDir, setSortDir] = useState('desc');
   const [filterTier, setFilterTier] = useState('all');
@@ -54,6 +56,9 @@ export default function Dashboard() {
   useEffect(() => {
     try { localStorage.setItem('op_watchlist', JSON.stringify(watchlist)); } catch {}
   }, [watchlist]);
+
+  // A window picked for one set is meaningless for another — snap back to ALL.
+  useEffect(() => { setTimeframe(null); }, [selectedSet]);
 
   // Merge metadata + live quotes
   const sets = useMemo(() => {
@@ -85,10 +90,27 @@ export default function Dashboard() {
   const selected = sets.find(s => s.code === selectedSet) || sets[0];
   const selectedHistory = selected ? (history?.[selected.code] || []) : [];
 
+  // buildChartData() always runs on the full history first; sliceWindow()
+  // then trims + re-indexes for the active timeframe. Never slice history
+  // before buildChartData — MAs need the full series to compute correctly.
   const chartData = useMemo(() => buildChartData(selectedHistory), [selectedHistory]);
-  const selectedFirst = chartData[0];
-  const selectedLast = chartData[chartData.length - 1];
-  const selectedAllTimeChange = selectedFirst && selectedLast ? pctChange(selectedFirst.price, selectedLast.price) : 0;
+  const windowedChartData = useMemo(() => sliceWindow(chartData, timeframe), [chartData, timeframe]);
+  const windowFirst = windowedChartData[0];
+  const windowLast = windowedChartData[windowedChartData.length - 1];
+
+  // All-time change stays anchored to the full series regardless of the
+  // active timeframe — the windowed delta is a separate figure (ey9.4).
+  const allTimeFirst = chartData[0];
+  const allTimeLast = chartData[chartData.length - 1];
+  const selectedAllTimeChange = allTimeFirst && allTimeLast ? pctChange(allTimeFirst.price, allTimeLast.price) : 0;
+
+  // A bucket is disabled when it can't cut anything off the full series —
+  // i.e. every observation already falls inside the window, so it would
+  // render a chart identical to ALL. Truthful data over pretty data.
+  const timeframeBuckets = useMemo(() => TIMEFRAME_WINDOWS.map(b => ({
+    ...b,
+    disabled: b.days !== null && (chartData.length === 0 || sliceWindow(chartData, b.days).length === chartData.length),
+  })), [chartData]);
 
   const { active, totalCap, totalVol, avgChange, gainers, losers, buys, topGainers, topLosers } = computeMarketStats(sets);
 
@@ -146,9 +168,10 @@ export default function Dashboard() {
         </section>
 
         {selected && (
-          <PriceChartSection selected={selected} chartData={chartData}
-            selectedFirst={selectedFirst} selectedLast={selectedLast}
-            selectedAllTimeChange={selectedAllTimeChange} />
+          <PriceChartSection selected={selected} chartData={windowedChartData}
+            selectedFirst={windowFirst} selectedLast={windowLast}
+            selectedAllTimeChange={selectedAllTimeChange}
+            timeframe={timeframe} setTimeframe={setTimeframe} timeframeBuckets={timeframeBuckets} />
         )}
 
         <OrderBook filtered={filtered} history={history}

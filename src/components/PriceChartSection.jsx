@@ -6,6 +6,7 @@ import {
 import { t } from './theme.js';
 import { fmt$, fmtPct, fmtNum, fmtChartDate, fmtAxisDate, observationDomain } from './format.js';
 import { SignalBadge, TierBadge, DataRow } from './ui.jsx';
+import TimeframeSelector from './TimeframeSelector.jsx';
 
 function PriceVolumeTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
@@ -30,7 +31,9 @@ function PriceVolumeTooltip({ active, payload, label }) {
   );
 }
 
-export default function PriceChartSection({ selected, chartData, selectedFirst, selectedLast, selectedAllTimeChange }) {
+export default function PriceChartSection({ selected, chartData, selectedFirst, selectedLast, selectedAllTimeChange, timeframe, setTimeframe, timeframeBuckets }) {
+  const activeBucket = timeframeBuckets?.find(b => b.days === timeframe);
+  const windowLabel = activeBucket ? activeBucket.label : 'ALL';
   return (
     <section style={{ marginBottom: 24, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 360px', gap: 16 }}>
       <div style={{ background: t.bgSecondary, border: `1px solid ${t.border}`, padding: 20, minWidth: 0 }}>
@@ -46,7 +49,7 @@ export default function PriceChartSection({ selected, chartData, selectedFirst, 
               Released {selected.released} · MSRP {fmt$(selected.msrp)} · Block {selected.block || 'EXTRA'}
             </div>
             <div style={{ fontSize: 10, color: t.textDim, marginTop: 4, fontFamily: 'JetBrains Mono, monospace' }}>
-              All-time observation view · {fmtNum(chartData.length)} verified points · {selectedFirst ? fmtChartDate(selectedFirst.ts) : '—'} → {selectedLast ? fmtChartDate(selectedLast.ts) : '—'}
+              {windowLabel} window · {fmtNum(chartData.length)} verified points · {selectedFirst ? fmtChartDate(selectedFirst.ts) : '—'} → {selectedLast ? fmtChartDate(selectedLast.ts) : '—'}
             </div>
           </div>
           <div style={{ textAlign: 'right' }}>
@@ -57,6 +60,12 @@ export default function PriceChartSection({ selected, chartData, selectedFirst, 
             <div style={{ fontSize: 10, color: t.textDim, fontFamily: 'JetBrains Mono, monospace', marginTop: 4 }}>30d change</div>
           </div>
         </div>
+
+        {timeframeBuckets && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+            <TimeframeSelector buckets={timeframeBuckets} value={timeframe} onChange={setTimeframe} />
+          </div>
+        )}
 
         <div style={{ height: 360 }}>
           <ResponsiveContainer width="100%" height="100%">

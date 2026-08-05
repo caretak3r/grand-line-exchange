@@ -6,6 +6,7 @@ import MoversPanel from './MoversPanel.jsx';
 import DecisionMatrix from './DecisionMatrix.jsx';
 import LiveTape from './LiveTape.jsx';
 import MarketPulse from './MarketPulse.jsx';
+import PriceChartSection from './PriceChartSection.jsx';
 import { SignalBadge, Sparkline, FilterPills } from './ui.jsx';
 
 // No globals in vitest here, so testing-library's auto-cleanup afterEach
@@ -87,6 +88,51 @@ describe('MarketPulse', () => {
     expect(screen.getByText('5/3')).toBeTruthy();           // buys/active.length
     expect(screen.getByText('8 up · 4 down')).toBeTruthy();
     expect(screen.getByText('22')).toBeTruthy();            // tracked sets
+  });
+});
+
+describe('PriceChartSection', () => {
+  const selected = {
+    code: 'OP-13', tier: 'grail', signal: 'BUY', name: 'The Three Captains',
+    released: '2025-01-01', msrp: 144, block: 'EXTRA', price: 180, change30d: 6.5, prev: 169,
+    bid: 175, ask: 185, spread: 5.4, high52w: 200, low52w: 140, volume30d: 40, soldLast7d: 5,
+    listings: 12, rsi: 55, momentum: 'bullish', notes: 'steady climb', tcgUrl: 'https://example.com',
+  };
+  const chartData = [
+    { axis: 0, ts: Date.parse('2026-01-01T10:00:00Z'), price: 170, volume: 3, ma7: 170, ma30: 170, source: 'tcgplayer current market' },
+    { axis: 1, ts: Date.parse('2026-01-08T10:00:00Z'), price: 180, volume: 5, ma7: 175, ma30: 175, source: 'tcgplayer current market' },
+  ];
+  const timeframeBuckets = [
+    { label: '7D', days: 7, disabled: false },
+    { label: '30D', days: 30, disabled: true },
+    { label: '90D', days: 90, disabled: true },
+    { label: '1Y', days: 365, disabled: true },
+    { label: 'ALL', days: null, disabled: false },
+  ];
+
+  it('clicking an enabled bucket reports the chosen window; disabled buckets are greyed out but still rendered', () => {
+    const setTimeframe = vi.fn();
+    render(<PriceChartSection selected={selected} chartData={chartData}
+      selectedFirst={chartData[0]} selectedLast={chartData[1]} selectedAllTimeChange={5.9}
+      timeframe={null} setTimeframe={setTimeframe} timeframeBuckets={timeframeBuckets} />);
+    fireEvent.click(screen.getByText('7D'));
+    expect(setTimeframe).toHaveBeenCalledWith(7);
+    const thirtyDay = screen.getByText('30D');
+    expect(thirtyDay).toBeTruthy();
+    expect(thirtyDay.disabled).toBe(true);
+  });
+
+  it('the header states the active window and its real observation bounds', () => {
+    const { rerender } = render(<PriceChartSection selected={selected} chartData={chartData}
+      selectedFirst={chartData[0]} selectedLast={chartData[1]} selectedAllTimeChange={5.9}
+      timeframe={null} setTimeframe={() => {}} timeframeBuckets={timeframeBuckets} />);
+    expect(screen.getByText(/ALL window/)).toBeTruthy();
+
+    const windowed = [chartData[1]];
+    rerender(<PriceChartSection selected={selected} chartData={windowed}
+      selectedFirst={windowed[0]} selectedLast={windowed[0]} selectedAllTimeChange={5.9}
+      timeframe={7} setTimeframe={() => {}} timeframeBuckets={timeframeBuckets} />);
+    expect(screen.getByText(/7D window/)).toBeTruthy();
   });
 });
 
