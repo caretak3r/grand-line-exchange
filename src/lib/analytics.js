@@ -49,6 +49,18 @@ export function buildChartData(historyRows) {
   });
 }
 
+// Trailing time window over buildChartData() output, re-indexed for the
+// chart's positional axis (0..n-1). MAs are already baked into `rows` and
+// carry through unchanged. Anchored off the last observation's ts, not
+// Date.now(), so a stale set still renders its own trailing window.
+// `days === null` returns all rows (identity).
+export function sliceWindow(rows, days) {
+  if (!rows.length) return [];
+  if (days === null) return rows;
+  const cutoff = rows[rows.length - 1].ts - days * 86400000;
+  return rows.filter(row => row.ts >= cutoff).map((row, i) => ({ ...row, axis: i }));
+}
+
 // Equal-weight base-100 index across the tracked sets, with per-set baselines
 // and carry-forward between events.
 export function buildIndexData(history, sets) {

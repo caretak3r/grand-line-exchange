@@ -3,6 +3,7 @@ import {
   parseChartTime,
   pctChange,
   buildChartData,
+  sliceWindow,
   buildIndexData,
   computeMarketStats,
 } from './analytics.js';
@@ -77,6 +78,61 @@ describe('buildChartData', () => {
     const out = buildChartData(dirty);
     expect(out).toHaveLength(1);
     expect(out[0].price).toBe(42);
+  });
+});
+
+describe('sliceWindow', () => {
+  // Four observations: three consecutive days, then a 40-day gap (31 days
+  // left in Jan + 9 in Feb, same time-of-day) before the last one —
+  // deliberately irregular so the window must cut on ts, not row count.
+  // Daily closes [100, 110, 90, 200] (all 'tcgplayer current market', so
+  // close === price, no median math):
+  //   ts0 01-01 window<=7d  [100]           -> ma7 100  | window<=30d same    -> ma30 100
+  //   ts1 01-02 window<=7d  [100,110]        -> ma7 105  | window<=30d same    -> ma30 105
+  //   ts2 01-03 window<=7d  [100,110,90]     -> ma7 100  | window<=30d same    -> ma30 100
+  //   ts3 02-10 window<=7d  [200] (alone)    -> ma7 200  | window<=30d [200]   -> ma30 200
+  const history = [
+    { date: '2026-01-01 10:00:00', price: 100, source: 'tcgplayer current market' },
+    { date: '2026-01-02 10:00:00', price: 110, source: 'tcgplayer current market' },
+    { date: '2026-01-03 10:00:00', price: 90, source: 'tcgplayer current market' },
+    { date: '2026-02-10 10:00:00', price: 200, source: 'tcgplayer current market' },
+  ];
+  const rows = buildChartData(history);
+
+  it('returns [] for empty input without throwing', () => {
+    expect(sliceWindow([], 30)).toEqual([]);
+  });
+
+  it('is identity when days is null', () => {
+    expect(sliceWindow(rows, null)).toBe(rows);
+  });
+
+  it('cuts on the last observation\'s ts, not row count: a 7d window across the 40d gap keeps only the last row', () => {
+    // cutoff = ts3 (02-10) - 7d = 02-03, which is after ts0..ts2 (all in January)
+    const out = sliceWindow(rows, 7);
+    expect(out).toHaveLength(1);
+    expect(out[0].price).toBe(200);
+    expect(out[0].axis).toBe(0);
+  });
+
+  it('re-indexes axis to 0..n-1 and carries ma7/ma30 through unchanged (not recomputed)', () => {
+    // ts3 - ts0 is exactly 40 days at matching times, so a 39d window's
+    // cutoff lands exactly on ts1 (inclusive) -> keeps [ts1, ts2, ts3].
+    const out = sliceWindow(rows, 39);
+    expect(out).toHaveLength(3);
+    expect(out.map(r => r.axis)).toEqual([0, 1, 2]);
+    expect(out[0].ma7).toBe(rows[1].ma7);
+    expect(out[0].ma30).toBe(rows[1].ma30);
+    expect(out[1].ma7).toBe(rows[2].ma7);
+    expect(out[1].ma30).toBe(rows[2].ma30);
+    expect(out[2].ma7).toBe(rows[3].ma7);
+    expect(out[2].ma30).toBe(rows[3].ma30);
+  });
+
+  it('does not mutate the input rows', () => {
+    const axesBefore = rows.map(r => r.axis);
+    sliceWindow(rows, 39);
+    expect(rows.map(r => r.axis)).toEqual(axesBefore);
   });
 });
 
