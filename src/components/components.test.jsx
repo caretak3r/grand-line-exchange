@@ -8,6 +8,8 @@ import LiveTape from './LiveTape.jsx';
 import MarketPulse from './MarketPulse.jsx';
 import PriceChartSection from './PriceChartSection.jsx';
 import { SignalBadge, Sparkline, FilterPills } from './ui.jsx';
+import { TIMEFRAME_WINDOWS } from './TimeframeSelector.jsx';
+import { buildTape } from '../lib/analytics.js';
 
 // No globals in vitest here, so testing-library's auto-cleanup afterEach
 // isn't registered — do it explicitly.
@@ -79,6 +81,9 @@ describe('LiveTape', () => {
     expect(screen.getByText('LIVE TAPE')).toBeTruthy();
   });
 
+  // ey9.7: LiveTape no longer builds its own tape from history — Dashboard.jsx
+  // does that (buildTape + sliceTape) and hands down the finished array, so
+  // tests build fixtures the same way production data flows in.
   const history = {
     'OP-13': [
       { date: '2026-01-01 10:00:00', price: 100, volume: 2, source: 'tcgplayer latest sale' },
@@ -86,15 +91,16 @@ describe('LiveTape', () => {
       { date: '2026-01-03 10:00:00', price: 90, volume: 1, source: 'tcgplayer current market' }, // not a fill
     ],
   };
+  const tape13 = buildTape(history, 'OP-13');
 
-  it('ALL SETS mode is the default and renders byte-identical with history/selectedSet also passed', () => {
-    render(<LiveTape txns={txns} history={history} selectedSet="OP-13" />);
+  it('ALL SETS mode is the default and renders byte-identical with a tape/selectedSet also passed', () => {
+    render(<LiveTape txns={txns} tape={tape13} selectedSet="OP-13" />);
     expect(screen.getAllByText('SOLD')).toHaveLength(30);
     expect(screen.getByText('Recent fills across major venues')).toBeTruthy();
   });
 
   it('switching to SET mode shows every retained fill, newest first, with absolute UTC dates and TYPE/VENUE collapsed to a subheading', () => {
-    render(<LiveTape txns={txns} history={history} selectedSet="OP-13" />);
+    render(<LiveTape txns={txns} tape={tape13} selectedSet="OP-13" />);
     fireEvent.click(screen.getByRole('button', { name: 'OP-13' }));
     expect(screen.getByText(/2 fills/)).toBeTruthy();           // market-quote row excluded
     expect(screen.getByText(/Jan 1, 2026 → Jan 2, 2026/)).toBeTruthy();
@@ -106,7 +112,7 @@ describe('LiveTape', () => {
   });
 
   it('shows a true empty state for a set with no recorded fills', () => {
-    render(<LiveTape txns={txns} history={{}} selectedSet="OP-99" />);
+    render(<LiveTape txns={txns} tape={[]} selectedSet="OP-99" />);
     fireEvent.click(screen.getByRole('button', { name: 'OP-99' }));
     expect(screen.getByText('No recorded fills for OP-99')).toBeTruthy();   // subtitle
     expect(screen.getByText('No recorded fills for OP-99.')).toBeTruthy();  // table body
@@ -116,7 +122,7 @@ describe('LiveTape', () => {
     const many = Array.from({ length: 90 }, (_, i) => ({
       date: `2026-01-${String((i % 28) + 1).padStart(2, '0')} 10:00:00`, price: 100 + i, volume: 1, source: 'tcgplayer latest sale',
     }));
-    const { container } = render(<LiveTape txns={txns} history={{ 'OP-13': many }} selectedSet="OP-13" />);
+    const { container } = render(<LiveTape txns={txns} tape={buildTape({ 'OP-13': many }, 'OP-13')} selectedSet="OP-13" />);
     fireEvent.click(screen.getByRole('button', { name: 'OP-13' }));
     expect(container.querySelectorAll('tbody tr')).toHaveLength(60);   // PAGE_SIZE, not 90
     expect(screen.getByText(/Showing 60 of 90/)).toBeTruthy();
@@ -128,6 +134,32 @@ describe('LiveTape', () => {
     fireEvent.scroll(scrollEl);
     expect(container.querySelectorAll('tbody tr')).toHaveLength(90);
     expect(screen.queryByText(/Showing/)).toBeNull();   // fully caught up, message drops
+  });
+
+  // ── ey9.7: chart↔tape binding ──────────────────────────────────────────
+  it('names the active window in the SET-mode subtitle when a timeframe bucket is active', () => {
+    const buckets = TIMEFRAME_WINDOWS.map(b => ({ ...b, disabled: false }));
+    render(<LiveTape txns={txns} tape={tape13} selectedSet="OP-13" timeframe={7} timeframeBuckets={buckets} />);
+    fireEvent.click(screen.getByRole('button', { name: 'OP-13' }));
+    expect(screen.getByText(/2 fills · 7D window · Jan 1, 2026 → Jan 2, 2026/)).toBeTruthy();
+  });
+
+  it('omits the window suffix when ALL is active (timeframe null)', () => {
+    const buckets = TIMEFRAME_WINDOWS.map(b => ({ ...b, disabled: false }));
+    render(<LiveTape txns={txns} tape={tape13} selectedSet="OP-13" timeframe={null} timeframeBuckets={buckets} />);
+    fireEvent.click(screen.getByRole('button', { name: 'OP-13' }));
+    expect(screen.getByText('2 fills · Jan 1, 2026 → Jan 2, 2026')).toBeTruthy();
+  });
+
+  it('clicking a SET cell in ALL SETS mode calls setSelectedSet and switches into SET mode for it', () => {
+    const setSelectedSet = vi.fn();
+    render(<LiveTape txns={txns} tape={[]} selectedSet="OP-13" setSelectedSet={setSelectedSet} />);
+    // txns[1] is set 'OP-1' per the fixture generator above.
+    fireEvent.click(screen.getByText('OP-1'));
+    expect(setSelectedSet).toHaveBeenCalledWith('OP-1');
+    // The mode toggle now shows a SOLD/TCGPlayer subheading — proof it
+    // jumped straight into SET mode rather than just recording the click.
+    expect(screen.getByText(/Every row:/)).toBeTruthy();
   });
 });
 

@@ -49,6 +49,13 @@ export function buildChartData(historyRows) {
   });
 }
 
+// Cutoff timestamp for a trailing window anchored at `anchorTs`. Shared by
+// sliceWindow() (chart rows) and sliceTape() (tape fills) so a given
+// timeframe cuts the identical wall-clock boundary in both panels.
+function windowCutoff(anchorTs, days) {
+  return days === null || anchorTs == null ? null : anchorTs - days * 86400000;
+}
+
 // Trailing time window over buildChartData() output, re-indexed for the
 // chart's positional axis (0..n-1). MAs are already baked into `rows` and
 // carry through unchanged. Anchored off the last observation's ts, not
@@ -57,8 +64,20 @@ export function buildChartData(historyRows) {
 export function sliceWindow(rows, days) {
   if (!rows.length) return [];
   if (days === null) return rows;
-  const cutoff = rows[rows.length - 1].ts - days * 86400000;
+  const cutoff = windowCutoff(rows[rows.length - 1].ts, days);
   return rows.filter(row => row.ts >= cutoff).map((row, i) => ({ ...row, axis: i }));
+}
+
+// Trailing time window over buildTape() output (already sorted newest
+// first — no positional axis to re-index). Anchored at `anchorTs`, the
+// caller's choice, not the tape's own last fill — Dashboard.jsx passes the
+// chart's last observation so a given timeframe selects the exact same
+// window in the chart and the tape. `days === null` returns the tape
+// untouched (ALL).
+export function sliceTape(tape, days, anchorTs) {
+  if (!tape.length || days === null) return tape;
+  const cutoff = windowCutoff(anchorTs, days);
+  return cutoff == null ? tape : tape.filter(row => row.ts >= cutoff);
 }
 
 // Equal-weight base-100 index across the tracked sets, with per-set baselines

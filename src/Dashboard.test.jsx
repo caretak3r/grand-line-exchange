@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, within } from '@testing-library/react';
 import Dashboard from './Dashboard.jsx';
 
 // recharts' ResponsiveContainer measures 0x0 in jsdom and renders nothing;
@@ -47,6 +47,7 @@ const history = {
 };
 const txns = [
   { id: 'a', set: 'OP-13', type: 'SOLD', price: 180, qty: 1, timestamp: '2026-07-17T11:50:00Z', venue: 'TCGPlayer' },
+  { id: 'b', set: 'OP-01', type: 'SOLD', price: 250, qty: 1, timestamp: '2026-07-17T11:55:00Z', venue: 'TCGPlayer' },
 ];
 
 afterEach(cleanup);
@@ -78,5 +79,31 @@ describe('Dashboard integration', () => {
     render(<Dashboard />);
     expect(await screen.findByText('DATA UNAVAILABLE')).toBeTruthy();
     expect(screen.getByText(/network fail/)).toBeTruthy();
+  });
+
+  it('selecting a set from the live tape moves the chart selection (ey9.7 binding)', async () => {
+    global.fetch = vi.fn((url) => {
+      const body = url.includes('market.json') ? market
+        : url.includes('history.json') ? history : txns;
+      return Promise.resolve({ json: () => Promise.resolve(body) });
+    });
+
+    render(<Dashboard />);
+    await screen.findByText('MARKET PULSE');
+
+    // Default selection (OP-13) is what the tape's per-set toggle shows —
+    // selectedSet lives only in Dashboard.jsx and is threaded to both panels.
+    expect(screen.getByRole('button', { name: 'OP-13' })).toBeTruthy();
+
+    // Click the OP-01 row in the tape's ALL SETS feed — this is the tape's
+    // one write path (setSelectedSet), not an independent set filter.
+    const tapeScroll = screen.getByTestId('tape-scroll');
+    fireEvent.click(within(tapeScroll).getByText('OP-01'));
+
+    // Both panels now read OP-01: the tape auto-switches into SET mode for
+    // it (its toggle button relabels), proving the chart's selectedSet moved
+    // too since both read the exact same Dashboard-owned state.
+    expect(screen.getByRole('button', { name: 'OP-01' })).toBeTruthy();
+    expect(screen.getByText('No recorded fills for OP-01')).toBeTruthy();
   });
 });

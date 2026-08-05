@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import SET_METADATA from './data/sets.json';
-import { buildChartData, sliceWindow, buildIndexData, computeMarketStats, computeWindowStats, pctChange } from './lib/analytics.js';
+import { buildChartData, sliceWindow, buildIndexData, computeMarketStats, computeWindowStats, pctChange, buildTape, sliceTape } from './lib/analytics.js';
 import { t } from './components/theme.js';
 import { LoadingScreen, ErrorScreen } from './components/StatusScreens.jsx';
 import HeaderBar from './components/HeaderBar.jsx';
@@ -102,6 +102,14 @@ export default function Dashboard() {
   // panels. Nothing downstream recomputes these.
   const windowStats = useMemo(() => computeWindowStats(windowedChartData), [windowedChartData]);
 
+  // LiveTape's per-set mode is bound to the same selectedSet + timeframe as
+  // the chart — this is the tape's only derivation of its fill list. sliceTape
+  // anchors on the chart's own last observation (not the tape's newest fill)
+  // so a given timeframe bucket cuts the identical window in both panels.
+  const tape = useMemo(() => buildTape(history, selectedSet), [history, selectedSet]);
+  const chartAnchorTs = chartData.length ? chartData[chartData.length - 1].ts : null;
+  const windowedTape = useMemo(() => sliceTape(tape, timeframe, chartAnchorTs), [tape, timeframe, chartAnchorTs]);
+
   // All-time change stays anchored to the full series regardless of the
   // active timeframe — it's the footer's "All-time Δ" figure, distinct from
   // windowStats.windowChange which describes only the active window.
@@ -189,7 +197,8 @@ export default function Dashboard() {
 
         <GrandLineIndex indexData={indexData} indexLast={indexLast} indexAllTimeChange={indexAllTimeChange} />
 
-        <LiveTape txns={txns} history={history} selectedSet={selectedSet} />
+        <LiveTape txns={txns} tape={windowedTape} selectedSet={selectedSet} setSelectedSet={setSelectedSet}
+          timeframe={timeframe} timeframeBuckets={timeframeBuckets} />
 
         <DecisionMatrix active={active} selectedSet={selectedSet} setSelectedSet={setSelectedSet} />
 

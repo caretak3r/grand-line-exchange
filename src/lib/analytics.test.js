@@ -4,6 +4,7 @@ import {
   pctChange,
   buildChartData,
   sliceWindow,
+  sliceTape,
   buildIndexData,
   computeMarketStats,
   computeWindowStats,
@@ -239,6 +240,43 @@ describe('computeWindowStats', () => {
     expect(s.windowChange).toBe(-20);
     expect(s.windowHigh).toBe(100);
     expect(s.windowLow).toBe(80);
+  });
+});
+
+describe('sliceTape', () => {
+  // Fills newest-first (buildTape's own order), ts expressed as whole days
+  // in ms so cutoff arithmetic is readable: day79, day40, day1, day0.
+  const day = 86400000;
+  const tape = [
+    { id: 'd79', ts: 79 * day, price: 400 },
+    { id: 'd40', ts: 40 * day, price: 300 },
+    { id: 'd1', ts: 1 * day, price: 200 },
+    { id: 'd0', ts: 0, price: 100 },
+  ];
+
+  it('returns [] for an empty tape', () => {
+    expect(sliceTape([], 30, 100 * day)).toEqual([]);
+  });
+
+  it('is identity when days is null, regardless of anchorTs', () => {
+    expect(sliceTape(tape, null, 79 * day)).toBe(tape);
+  });
+
+  it('filters on a cutoff relative to the given anchorTs, not the tape\'s own newest fill', () => {
+    // anchorTs = the chart's last observation, here day79 (matches the
+    // tape's newest fill). cutoff = 79d - 45d = 34d -> keeps day79, day40.
+    const out = sliceTape(tape, 45, 79 * day);
+    expect(out.map(r => r.id)).toEqual(['d79', 'd40']);
+  });
+
+  it('anchors off the passed anchorTs even when it postdates every fill', () => {
+    // Chart's last observation (day90) is 11 days after the tape's newest
+    // fill (day79). cutoff = 90d - 10d = 80d -> no fill is that recent.
+    expect(sliceTape(tape, 10, 90 * day)).toEqual([]);
+  });
+
+  it('returns the tape untouched when anchorTs is unavailable (nothing to cut against)', () => {
+    expect(sliceTape(tape, 30, null)).toBe(tape);
   });
 });
 

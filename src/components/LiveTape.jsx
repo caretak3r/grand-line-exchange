@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { t } from './theme.js';
 import { fmt$, fmtNum, fmtUtcDate, timeAgo } from './format.js';
 import { SectionHeader } from './ui.jsx';
-import { buildTape } from '../lib/analytics.js';
 
 // Rendered-row cap for per-set mode. A set can carry 3k+ fills — the DOM
 // only ever holds this many rows at once; scrolling near the bottom lazily
@@ -20,16 +19,17 @@ function modeButtonStyle(active) {
   };
 }
 
-export default function LiveTape({ txns, history, selectedSet }) {
+// Tape's own set + window binding is read-only by design: `tape` arrives
+// pre-built and pre-windowed from Dashboard.jsx (buildTape + sliceTape,
+// keyed off the same selectedSet/timeframe the chart uses) so this
+// component never forks its own copy of either. Clicking a set in ALL SETS
+// mode is the tape's one write path — it calls setSelectedSet, which moves
+// the chart too.
+export default function LiveTape({ txns, tape = [], selectedSet, setSelectedSet, timeframe, timeframeBuckets }) {
   const [mode, setMode] = useState('ALL'); // 'ALL' | 'SET' — code always tracks selectedSet
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
-  // Full retained history for the set, newest first — buildTape() already
-  // filters to real 'tcgplayer latest sale' rows. Recomputed only when the
-  // set or mode changes, never on scroll (scroll just slices the array).
-  const tape = useMemo(() => (mode === 'SET' ? buildTape(history, selectedSet) : []), [mode, history, selectedSet]);
-
-  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [mode, selectedSet]);
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [mode, selectedSet, timeframe]);
 
   const handleScroll = (e) => {
     if (mode !== 'SET') return;
@@ -39,14 +39,28 @@ export default function LiveTape({ txns, history, selectedSet }) {
     }
   };
 
+  const jumpToSet = (code) => {
+    if (!setSelectedSet || !code) return;
+    setSelectedSet(code);
+    setMode('SET');
+  };
+
   const allRows = (txns || []).slice(0, 30);
-  const setRows = tape.slice(0, visibleCount);
+  const setRows = mode === 'SET' ? tape.slice(0, visibleCount) : [];
+
+  // Active timeframe bucket, same lookup PriceChartSection uses — a label
+  // only, not a re-derivation of the window itself (that already happened
+  // in Dashboard.jsx before `tape` ever reached this component).
+  const activeBucket = timeframeBuckets?.find(b => b.days === timeframe);
+  const windowLabel = activeBucket && activeBucket.days !== null ? activeBucket.label : null;
 
   // First→last fill date span — history is bounded (365d + monthly spine),
   // so this is the true retained coverage, not a claim of continuous data.
   const span = tape.length ? `${fmtUtcDate(tape[tape.length - 1].ts)} → ${fmtUtcDate(tape[0].ts)}` : null;
   const subtitle = mode === 'SET'
-    ? (tape.length ? `${fmtNum(tape.length)} fills · ${span}` : `No recorded fills for ${selectedSet}`)
+    ? (tape.length
+        ? `${fmtNum(tape.length)} fills${windowLabel ? ` · ${windowLabel} window` : ''} · ${span}`
+        : `No recorded fills for ${selectedSet}${windowLabel ? ` in the ${windowLabel} window` : ''}`)
     : 'Recent fills across major venues';
 
   return (
@@ -83,7 +97,10 @@ export default function LiveTape({ txns, history, selectedSet }) {
                 {allRows.map(tx => (
                   <tr key={tx.id} className="row-hover" style={{ borderBottom: `1px solid ${t.border}` }}>
                     <td style={{ padding: '7px 8px', color: t.textDim }}>{timeAgo(tx.timestamp)}</td>
-                    <td style={{ padding: '7px 8px', color: t.accent, fontWeight: 600 }}>{tx.set}</td>
+                    <td onClick={() => jumpToSet(tx.set)}
+                      style={{ padding: '7px 8px', color: t.accent, fontWeight: 600, cursor: setSelectedSet ? 'pointer' : 'default' }}>
+                      {tx.set}
+                    </td>
                     <td style={{ padding: '7px 8px' }}>
                       <span style={{ fontSize: 9, padding: '2px 5px', letterSpacing: 1, fontWeight: 700, color: tx.type === 'SOLD' ? t.buy : tx.type === 'LISTED' ? t.sell : t.warn, background: `${tx.type === 'SOLD' ? t.buy : tx.type === 'LISTED' ? t.sell : t.warn}10` }}>{tx.type}</span>
                     </td>
