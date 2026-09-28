@@ -2,7 +2,7 @@
 
 A real-time trading dashboard for One Piece TCG sealed booster boxes — Bloomberg Terminal aesthetics, automatic price updates, GitHub Pages deployment.
 
-> Track every English booster box (OP-01 through OP-15, EB, PRB) with live prices, 30-day momentum, technicals, buy/sell signals, and a market-wide index.
+> Track every English booster box (OP-01 through OP-18, EB, PRB) with live prices, 30-day momentum, technicals, buy/sell signals, and a market-wide index.
 
 ---
 
